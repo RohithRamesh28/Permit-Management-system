@@ -63,7 +63,6 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [requiresSignature, setRequiresSignature] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -222,10 +221,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
         console.error('Error sending to Power Automate:', flowError);
       }
 
-      setShowSuccess(true);
-      setTimeout(() => {
-        window.location.href = `/permit/${permitData.id}?readOnly=true`;
-      }, 1500);
+      window.location.href = `/permit/${permitData.id}?readOnly=true`;
     } catch (error) {
       console.error('Error submitting permit:', error);
       alert('Error submitting permit. Please try again.');
@@ -234,23 +230,23 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
     }
   };
 
-  if (showSuccess) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-gray-50">
-        <div className="text-center">
-          <CheckCircle size={64} className="text-green-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Permit Submitted Successfully!</h2>
-          <p className="text-gray-600">Redirecting to dashboard...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="flex-1 bg-gray-50 p-8 overflow-auto">
-      <div className="max-w-4xl mx-auto">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
-          <h1 className="text-2xl font-bold text-gray-900 mb-6">New Permit Request</h1>
+    <>
+      {submitting && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl p-8 max-w-sm w-full mx-4 text-center">
+            <div className="w-16 h-16 border-4 border-gray-200 border-t-[#0072BC] rounded-full animate-spin mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Submitting Permit</h3>
+            <p className="text-sm text-gray-600">Please wait while we process your request...</p>
+          </div>
+        </div>
+      )}
+
+      <div className="flex-1 bg-gray-50 p-8 overflow-auto">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+            <h1 className="text-2xl font-bold text-gray-900 mb-6">New Permit Request</h1>
 
           <form onSubmit={handleSubmit} className="space-y-8">
             <div>
@@ -630,5 +626,6 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
         </div>
       </div>
     </div>
+    </>
   );
 }
