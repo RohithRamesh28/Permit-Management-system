@@ -108,6 +108,9 @@ export default function PermitListView({ onNavigate, onSelectPermit }: PermitLis
   return (
     <div className="flex-1 bg-gray-50 p-8 overflow-auto">
       <div className="max-w-7xl mx-auto">
+        <div className="flex justify-center mb-6">
+          <img src="/OIP.webp" alt="Ontivity Logo" className="h-20 w-auto" />
+        </div>
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Permit Dashboard</h1>

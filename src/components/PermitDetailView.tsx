@@ -358,6 +358,9 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
   return (
     <div className="flex-1 bg-gray-50 p-8 overflow-auto">
       <div className="max-w-6xl mx-auto">
+        <div className="flex justify-center mb-6">
+          <img src="/OIP.webp" alt="Ontivity Logo" className="h-20 w-auto" />
+        </div>
         {!readOnlyMode && (
           <button
             onClick={() => onNavigate('list')}
