@@ -20,6 +20,13 @@ jobs:
       - name: Build And Deploy
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
+        env:
+          VITE_SUPABASE_URL: https://jvsyugwllozxglydamgq.supabase.co
+          VITE_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2c3l1Z3dsbG96eGdseWRhbWdxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzMTQ1OTAsImV4cCI6MjA4ODg5MDU5MH0.me9ZyGuAGSB7jHwzjXMaGaQHsiHWgTwZ8haM-s_9_Qw
+          VITE_AZURE_CLIENT_ID: c01be167-54b5-4e66-a8a1-8c5303b3430b
+          VITE_AZURE_TENANT_ID: 3596b7c3-9b4b-4ef8-9dde-39825373af28
+          VITE_SHAREPOINT_SITE_URL: https://ontivity.sharepoint.com/sites/OntivityJobManagement
+          VITE_SHAREPOINT_LIST_NAME: All Divisions Job List
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_THANKFUL_STONE_09C22B310 }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
