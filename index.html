@@ -7,24 +7,22 @@
     <title>Permit Management System</title>
     <meta name="description" content="Permit Management System" />
     <style>
-      /* Aggressive watermark removal */
+      /* Aggressive watermark and overlay removal */
       [class*="watermark"],
       [class*="bolt"],
       [class*="Bolt"],
       [id*="watermark"],
       [id*="bolt"],
       [id*="Bolt"],
-      div[style*="position: fixed"][style*="z-index"],
-      div[style*="position: absolute"][style*="z-index: 999"],
-      div[style*="position: absolute"][style*="z-index: 9999"],
-      div[style*="pointer-events: none"],
       [class*="branding"],
       [class*="badge"],
-      [class*="overlay"][style*="fixed"],
+      [class*="overlay"],
       [data-testid*="watermark"],
       [aria-label*="watermark"],
       [aria-label*="bolt"],
-      [aria-label*="Bolt"] {
+      [aria-label*="Bolt"],
+      [class*="splash"],
+      [id*="splash"] {
         display: none !important;
         visibility: hidden !important;
         opacity: 0 !important;
@@ -33,102 +31,102 @@
         height: 0 !important;
       }
 
-      /* Cover overlay to hide any initial watermarks */
-      #temp-cover {
-        position: fixed;
-        top: 0;
-        left: 0;
+      /* Hide all fixed/absolute positioned divs that aren't part of the app */
+      body > div:not(#root) {
+        display: none !important;
+      }
+
+      /* Ensure root is visible and takes full space */
+      html, body {
+        margin: 0;
+        padding: 0;
         width: 100%;
         height: 100%;
-        background: #1f2937;
-        z-index: 99999;
-        transition: opacity 0.3s ease-out;
+        overflow: hidden;
+      }
+
+      #root {
+        width: 100%;
+        height: 100%;
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
       }
     </style>
     <script>
-      // Immediate watermark removal - runs before anything else
+      // Ultra-aggressive watermark and overlay removal
       (function() {
-        function removeWatermarks() {
-          const selectors = [
-            '[class*="watermark"]',
-            '[class*="bolt"]',
-            '[class*="Bolt"]',
-            '[id*="watermark"]',
-            '[id*="bolt"]',
-            '[id*="Bolt"]',
-            '[class*="branding"]',
-            '[class*="badge"]',
-            '[data-testid*="watermark"]',
-            'div[style*="position: fixed"]',
-            'div[style*="position: absolute"][style*="z-index"]'
-          ];
-
-          selectors.forEach(selector => {
-            try {
-              const elements = document.querySelectorAll(selector);
-              elements.forEach(el => {
-                if (el && el.parentNode && !el.closest('#root')) {
-                  el.remove();
-                }
-              });
-            } catch (e) {
-              // Ignore errors
+        function removeUnwantedElements() {
+          // Remove any element that contains bolt text
+          const allElements = document.querySelectorAll('*');
+          allElements.forEach(el => {
+            const text = el.textContent?.toLowerCase() || '';
+            const html = el.innerHTML?.toLowerCase() || '';
+            if ((text.includes('bolt') || html.includes('bolt')) &&
+                !el.closest('#root') &&
+                el.id !== 'root') {
+              el.remove();
             }
           });
 
-          // Remove any non-root elements
+          // Remove all body children except root and scripts
           const body = document.body;
           if (body) {
             Array.from(body.children).forEach(child => {
-              if (child.id !== 'root' && child.tagName !== 'SCRIPT' && child.id !== 'temp-cover') {
-                const text = child.textContent?.toLowerCase() || '';
-                if (text.includes('bolt') || text.includes('watermark')) {
-                  child.remove();
-                }
+              if (child.id !== 'root' && child.tagName !== 'SCRIPT') {
+                child.remove();
               }
             });
           }
+
+          // Remove iframe overlays
+          const iframes = document.querySelectorAll('iframe:not(#root iframe)');
+          iframes.forEach(iframe => {
+            const src = iframe.src?.toLowerCase() || '';
+            if (src.includes('bolt') || !iframe.closest('#root')) {
+              iframe.remove();
+            }
+          });
         }
 
-        // Run immediately
-        removeWatermarks();
+        // Run immediately and continuously
+        removeUnwantedElements();
 
-        // Run on DOM ready
-        if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', removeWatermarks);
-        }
+        // Run every 100ms for first 10 seconds
+        const interval = setInterval(removeUnwantedElements, 100);
+        setTimeout(() => clearInterval(interval), 10000);
 
-        // Run continuously for first 5 seconds
-        const interval = setInterval(removeWatermarks, 200);
-        setTimeout(() => clearInterval(interval), 5000);
+        // Continue checking periodically after that
+        setInterval(removeUnwantedElements, 1000);
 
         // Observe for any new elements
-        const observer = new MutationObserver(removeWatermarks);
+        const observer = new MutationObserver(removeUnwantedElements);
         const startObserver = () => {
           if (document.body) {
             observer.observe(document.body, {
               childList: true,
-              subtree: true
+              subtree: true,
+              attributes: true,
+              attributeFilter: ['class', 'id', 'style']
             });
           } else {
-            setTimeout(startObserver, 100);
+            setTimeout(startObserver, 10);
           }
         };
-        startObserver();
 
-        // Remove cover after 3 seconds
-        setTimeout(() => {
-          const cover = document.getElementById('temp-cover');
-          if (cover) {
-            cover.style.opacity = '0';
-            setTimeout(() => cover.remove(), 300);
-          }
-        }, 3000);
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', () => {
+            removeUnwantedElements();
+            startObserver();
+          });
+        } else {
+          removeUnwantedElements();
+          startObserver();
+        }
       })();
     </script>
   </head>
   <body>
-    <div id="temp-cover"></div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
