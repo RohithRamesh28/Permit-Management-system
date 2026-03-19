@@ -14,6 +14,7 @@ interface NewPermitFormProps {
 
 interface FormData {
   requestor: string;
+  requester_type: string;
   ontivity_project_number: string;
   performing_entity: string;
   date_of_request: string;
@@ -37,6 +38,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
 
   const [formData, setFormData] = useState<FormData>({
     requestor: userName || '',
+    requester_type: '',
     ontivity_project_number: '',
     performing_entity: '',
     date_of_request: getCurrentDateInMMDDYYYY(),
@@ -103,6 +105,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
           {
             permit_id: permitId,
             requestor: formData.requestor,
+            requester_type: formData.requester_type,
             requester_email: userEmail,
             ontivity_project_number: formData.ontivity_project_number,
             performing_entity: formData.performing_entity,
@@ -187,6 +190,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
         submitted_by: formData.requestor,
         submitted_by_email: userEmail,
         requestor: formData.requestor,
+        requester_type: formData.requester_type,
         ontivity_project_number: formData.ontivity_project_number,
         performing_entity: formData.performing_entity,
         date_of_request: formData.date_of_request,
@@ -271,6 +275,25 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
                   />
                   <p className="text-xs text-gray-500 mt-1">Auto-filled from logged in user</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Requester Type <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    name="requester_type"
+                    value={formData.requester_type}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                  >
+                    <option value="">Select requester type</option>
+                    <option value="Project Manager">Project Manager</option>
+                    <option value="Construction Manager">Construction Manager</option>
+                    <option value="Division Manager">Division Manager</option>
+                    <option value="Electronic Manager">Electronic Manager</option>
+                  </select>
                 </div>
 
                 <div>

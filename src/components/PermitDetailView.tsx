@@ -406,6 +406,12 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                       <p className="text-sm text-gray-500">Requestor</p>
                       <p className="text-gray-900 font-medium">{permit.requestor}</p>
                     </div>
+                    {permit.requester_type && (
+                      <div>
+                        <p className="text-sm text-gray-500">Requester Type</p>
+                        <p className="text-gray-900 font-medium">{permit.requester_type}</p>
+                      </div>
+                    )}
                     <div>
                       <p className="text-sm text-gray-500">Performing Entity</p>
                       <p className="text-gray-900 font-medium">{permit.performing_entity}</p>
