@@ -190,6 +190,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
         submitted_by: formData.requestor,
         submitted_by_email: userEmail,
         requestor: formData.requestor,
+        requester_type: formData.requester_type,
         ontivity_project_number: formData.ontivity_project_number,
         performing_entity: formData.performing_entity,
         date_of_request: formData.date_of_request,
