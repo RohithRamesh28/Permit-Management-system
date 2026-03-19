@@ -5,11 +5,130 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Permit Management System</title>
-    <meta property="og:image" content="https://bolt.new/static/og_default.png" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:image" content="https://bolt.new/static/og_default.png" />
+    <meta name="description" content="Permit Management System" />
+    <style>
+      /* Aggressive watermark removal */
+      [class*="watermark"],
+      [class*="bolt"],
+      [class*="Bolt"],
+      [id*="watermark"],
+      [id*="bolt"],
+      [id*="Bolt"],
+      div[style*="position: fixed"][style*="z-index"],
+      div[style*="position: absolute"][style*="z-index: 999"],
+      div[style*="position: absolute"][style*="z-index: 9999"],
+      div[style*="pointer-events: none"],
+      [class*="branding"],
+      [class*="badge"],
+      [class*="overlay"][style*="fixed"],
+      [data-testid*="watermark"],
+      [aria-label*="watermark"],
+      [aria-label*="bolt"],
+      [aria-label*="Bolt"] {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+        width: 0 !important;
+        height: 0 !important;
+      }
+
+      /* Cover overlay to hide any initial watermarks */
+      #temp-cover {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: #1f2937;
+        z-index: 99999;
+        transition: opacity 0.3s ease-out;
+      }
+    </style>
+    <script>
+      // Immediate watermark removal - runs before anything else
+      (function() {
+        function removeWatermarks() {
+          const selectors = [
+            '[class*="watermark"]',
+            '[class*="bolt"]',
+            '[class*="Bolt"]',
+            '[id*="watermark"]',
+            '[id*="bolt"]',
+            '[id*="Bolt"]',
+            '[class*="branding"]',
+            '[class*="badge"]',
+            '[data-testid*="watermark"]',
+            'div[style*="position: fixed"]',
+            'div[style*="position: absolute"][style*="z-index"]'
+          ];
+
+          selectors.forEach(selector => {
+            try {
+              const elements = document.querySelectorAll(selector);
+              elements.forEach(el => {
+                if (el && el.parentNode && !el.closest('#root')) {
+                  el.remove();
+                }
+              });
+            } catch (e) {
+              // Ignore errors
+            }
+          });
+
+          // Remove any non-root elements
+          const body = document.body;
+          if (body) {
+            Array.from(body.children).forEach(child => {
+              if (child.id !== 'root' && child.tagName !== 'SCRIPT' && child.id !== 'temp-cover') {
+                const text = child.textContent?.toLowerCase() || '';
+                if (text.includes('bolt') || text.includes('watermark')) {
+                  child.remove();
+                }
+              }
+            });
+          }
+        }
+
+        // Run immediately
+        removeWatermarks();
+
+        // Run on DOM ready
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', removeWatermarks);
+        }
+
+        // Run continuously for first 5 seconds
+        const interval = setInterval(removeWatermarks, 200);
+        setTimeout(() => clearInterval(interval), 5000);
+
+        // Observe for any new elements
+        const observer = new MutationObserver(removeWatermarks);
+        const startObserver = () => {
+          if (document.body) {
+            observer.observe(document.body, {
+              childList: true,
+              subtree: true
+            });
+          } else {
+            setTimeout(startObserver, 100);
+          }
+        };
+        startObserver();
+
+        // Remove cover after 3 seconds
+        setTimeout(() => {
+          const cover = document.getElementById('temp-cover');
+          if (cover) {
+            cover.style.opacity = '0';
+            setTimeout(() => cover.remove(), 300);
+          }
+        }, 3000);
+      })();
+    </script>
   </head>
   <body>
+    <div id="temp-cover"></div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

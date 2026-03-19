@@ -14,7 +14,51 @@ function AppContent() {
   useEffect(() => {
     triggerJobSyncIfNeeded();
     const interval = setInterval(triggerJobSyncIfNeeded, 2 * 60 * 60 * 1000);
-    return () => clearInterval(interval);
+
+    // Enhanced watermark removal for React app
+    const removeWatermarks = () => {
+      const selectors = [
+        '[class*="watermark"]',
+        '[class*="bolt"]',
+        '[class*="Bolt"]',
+        '[id*="watermark"]',
+        '[id*="bolt"]',
+        '[id*="Bolt"]',
+        '[class*="branding"]',
+        '[class*="badge"]',
+        '[data-testid*="watermark"]'
+      ];
+
+      selectors.forEach(selector => {
+        try {
+          const elements = document.querySelectorAll(selector);
+          elements.forEach(el => {
+            const root = document.getElementById('root');
+            if (el && el.parentNode && !root?.contains(el)) {
+              el.remove();
+            }
+          });
+        } catch (e) {
+          // Ignore errors
+        }
+      });
+    };
+
+    // Run watermark removal periodically
+    const watermarkInterval = setInterval(removeWatermarks, 500);
+
+    // Observe for dynamically added watermarks
+    const observer = new MutationObserver(removeWatermarks);
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+
+    return () => {
+      clearInterval(interval);
+      clearInterval(watermarkInterval);
+      observer.disconnect();
+    };
   }, []);
 
   const handleNavigate = (view: string) => {
