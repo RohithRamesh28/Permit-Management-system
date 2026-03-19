@@ -250,8 +250,8 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
       <div className="flex-1 bg-gray-50 p-8 overflow-auto">
         <div className="max-w-4xl mx-auto">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
-            <div className="flex justify-center mb-6">
-              <img src="/OIP.webp" alt="Ontivity Logo" className="h-20 w-auto" />
+            <div className="flex items-center mb-8">
+              <img src="/image_(6).png" alt="Ontivity Logo" className="h-16 w-auto" />
             </div>
             <h1 className="text-2xl font-bold text-gray-900 mb-6">New Permit Request</h1>
 
