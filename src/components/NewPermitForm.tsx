@@ -185,12 +185,11 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
       const powerAutomateUrl = 'https://default3596b7c39b4b4ef89dde39825373af.28.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/c9bb3dc15bc34e1681cdcdda36db4cee/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=XflS1U3z0zJ8icT07Wzj8nTU2o0VIG0xnbt92ohpfZI';
 
       const payload = {
-        timing_id: permitData.id,
+        timing_id: permitData.id.toString(),
         unique_id: permitId,
         submitted_by: formData.requestor,
         submitted_by_email: userEmail,
         requestor: formData.requestor,
-        requester_type: formData.requester_type,
         ontivity_project_number: formData.ontivity_project_number,
         performing_entity: formData.performing_entity,
         date_of_request: formData.date_of_request,
@@ -203,7 +202,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
         city: formData.city,
         property_owner: formData.property_owner,
         end_customer: formData.end_customer,
-        project_value: formData.project_value,
+        project_value: parseInt(formData.project_value) || 0,
         actual_date_of_completion: formData.actual_date_of_completion || '',
         detailed_sow: formData.detailed_sow,
         status: 'Pending Approval',
