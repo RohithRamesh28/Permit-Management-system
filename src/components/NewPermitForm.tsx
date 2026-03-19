@@ -214,15 +214,26 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
       };
 
       try {
-        await fetch(powerAutomateUrl, {
+        const response = await fetch(powerAutomateUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(payload),
         });
+
+        if (!response.ok) {
+          console.error('Power Automate response error:', {
+            status: response.status,
+            statusText: response.statusText,
+            url: powerAutomateUrl
+          });
+        } else {
+          console.log('Successfully sent to Power Automate:', response.status);
+        }
       } catch (flowError) {
         console.error('Error sending to Power Automate:', flowError);
+        console.error('Payload that was attempted to send:', payload);
       }
 
       window.location.href = `/permit/${permitData.id}?readOnly=true`;
