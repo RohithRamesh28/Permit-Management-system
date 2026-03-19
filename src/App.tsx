@@ -14,10 +14,7 @@ function AppContent() {
   useEffect(() => {
     triggerJobSyncIfNeeded();
     const interval = setInterval(triggerJobSyncIfNeeded, 2 * 60 * 60 * 1000);
-
-    return () => {
-      clearInterval(interval);
-    };
+    return () => clearInterval(interval);
   }, []);
 
   const handleNavigate = (view: string) => {

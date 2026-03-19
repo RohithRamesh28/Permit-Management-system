@@ -1,38 +1,3 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Comprehensive watermark removal */
-[class*="watermark"],
-[class*="bolt"],
-[class*="Bolt"],
-[id*="watermark"],
-[id*="bolt"],
-[id*="Bolt"],
-[class*="branding"],
-[class*="badge"],
-[class*="promotional"],
-[data-testid*="watermark"],
-[aria-label*="watermark"],
-[aria-label*="bolt"],
-[aria-label*="Bolt"] {
-  display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
-  width: 0 !important;
-  height: 0 !important;
-  position: absolute !important;
-  left: -9999px !important;
-}
-
-/* Hide fixed/absolute overlays that might be watermarks */
-body > div[style*="position: fixed"]:not(#root):not([class*="modal"]):not([class*="dialog"]),
-body > div[style*="position: absolute"]:not(#root):not([class*="modal"]):not([class*="dialog"]) {
-  display: none !important;
-}
-
-/* Ensure clean rendering */
-#root {
-  isolation: isolate;
-}
