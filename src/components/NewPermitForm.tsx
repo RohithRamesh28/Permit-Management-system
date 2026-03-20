@@ -643,14 +643,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
               </div>
             </div>
 
-            <div className="flex justify-end gap-4 pt-6 border-t border-gray-200">
-              <button
-                type="button"
-                onClick={() => onNavigate('list')}
-                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
+            <div className="flex justify-end pt-6 border-t border-gray-200">
               <button
                 type="submit"
                 disabled={submitting}

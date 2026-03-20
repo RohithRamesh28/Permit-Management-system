@@ -396,36 +396,6 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
     }
   };
 
-  const handleClose = async () => {
-    if (!permit) return;
-    setActionInProgress(true);
-
-    try {
-      const { error: updateError } = await supabase
-        .from('permits')
-        .update({ status: 'Closed' })
-        .eq('id', permitId);
-
-      if (updateError) throw updateError;
-
-      await supabase.from('permit_audit_log').insert([
-        {
-          permit_id: permitId,
-          action: 'Closed',
-          performed_by: 'System Admin',
-          notes: 'Permit closed',
-        },
-      ]);
-
-      setIsEditMode(false);
-      await fetchPermitDetails();
-    } catch (error) {
-      console.error('Error closing permit:', error);
-      alert('Error closing permit. Please try again.');
-    } finally {
-      setActionInProgress(false);
-    }
-  };
 
   const getStatusBadgeClass = (status: string) => {
     switch (status) {
@@ -487,26 +457,6 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         <div className="flex items-center mb-8">
           <img src="/image_(6).png" alt="Ontivity Logo" className="h-16 w-auto" />
         </div>
-        {!readOnlyMode && (
-          <button
-            onClick={() => onNavigate('list')}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
-          >
-            <ArrowLeft size={20} />
-            Back to Dashboard
-          </button>
-        )}
-        {readOnlyMode && (
-          <div className="mb-6">
-            <button
-              onClick={() => onNavigate('new')}
-              className="flex items-center gap-2 bg-[#0072BC] text-white px-4 py-2 rounded-lg hover:bg-[#005a94] transition-colors"
-            >
-              <PlusCircle size={20} />
-              Create New Permit
-            </button>
-          </div>
-        )}
 
         {permit.rejection_notes && (
           <div className="bg-red-50 border-l-4 border-red-500 p-6 rounded-r-lg mb-6">
@@ -536,7 +486,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
               <span className={`px-4 py-2 rounded-full text-sm font-medium ${getStatusBadgeClass(permit.status)}`}>
                 {permit.status}
               </span>
-              {(permit.status === 'Active' || permit.status === 'Rejected') && !isEditMode && (
+              {permit.status === 'Rejected' && !isEditMode && (
                 <button
                   onClick={() => setIsEditMode(true)}
                   className="flex items-center gap-2 px-4 py-2 bg-[#0072BC] text-white rounded-lg hover:bg-[#005a94] transition-colors"
@@ -703,15 +653,6 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                           className="w-full flex items-center justify-center gap-2 bg-[#0072BC] text-white px-4 py-2 rounded-lg hover:bg-[#005a94] transition-colors disabled:opacity-50"
                         >
                           Resubmit
-                        </button>
-                      )}
-                      {permit.status === 'Active' && isEditMode && (
-                        <button
-                          onClick={handleClose}
-                          disabled={actionInProgress}
-                          className="w-full flex items-center justify-center gap-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50"
-                        >
-                          Close Permit
                         </button>
                       )}
                       {isEditMode && (
