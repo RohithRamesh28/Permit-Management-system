@@ -262,14 +262,8 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
         <div className="max-w-5xl mx-auto">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="bg-gradient-to-r from-gray-50 to-blue-50 -mx-6 -mt-6 px-6 pt-5 pb-4 mb-5 border-b-4 border-[#0072BC]">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center">
                 <img src="/image_(6).png" alt="Ontivity Logo" className="h-12 w-auto" />
-                <div className="text-right">
-                  <div className="text-xs font-medium text-gray-600 mb-1">Date of Request</div>
-                  <div className="text-sm font-semibold text-gray-900 px-3 py-1.5 bg-white/60 rounded-md border border-gray-200">
-                    {formData.date_of_request}
-                  </div>
-                </div>
               </div>
             </div>
 
@@ -311,6 +305,22 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                   </select>
                 </div>
 
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Date of Request <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.date_of_request}
+                    readOnly
+                    disabled
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed"
+                  />
+                  <p className="text-[10px] text-gray-500 mt-0.5">Auto-filled with current date</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
                     Ontivity Project Number <span className="text-red-500">*</span>
