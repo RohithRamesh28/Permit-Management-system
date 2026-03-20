@@ -624,10 +624,6 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                           <p className="text-gray-900 font-medium">{permit.performing_entity}</p>
                         </div>
                         <div>
-                          <p className="text-sm text-gray-500">Date of Request</p>
-                          <p className="text-gray-900 font-medium">{formatDate(permit.date_of_request)}</p>
-                        </div>
-                        <div>
                           <p className="text-sm text-gray-500">Project Commencement</p>
                           <p className="text-gray-900 font-medium">{formatDate(permit.date_of_project_commencement)}</p>
                         </div>
