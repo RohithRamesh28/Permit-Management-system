@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, CheckCircle, XCircle, FileText, Clock, Eye, PlusCircle, CreditCard as Edit2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, FileText, Clock, Eye, PlusCircle, CreditCard as Edit2, AlertCircle, Download } from 'lucide-react';
 import { supabase, Permit, PermitDocument, PermitAuditLog } from '../lib/supabase';
 import { SignaturePad, SignaturePadRef } from './SignaturePad';
-import { generatePermitPDF } from '../services/pdfGenerator';
+import { generatePermitPDF, downloadPDF } from '../services/pdfGenerator';
 import DocumentPreviewModal from './DocumentPreviewModal';
 import SearchableDropdown from './SearchableDropdown';
 import { useSharePointJobs } from '../hooks/useSharePointJobs';
@@ -104,13 +104,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
   };
 
   const handleRejectClick = () => {
-    if (permit?.requires_signature && !permit.signature_image_url) {
-      setPendingAction('reject');
-      setShowRejectModal(false);
-      setShowSignatureModal(true);
-    } else {
-      setShowRejectModal(true);
-    }
+    setShowRejectModal(true);
   };
 
   const handleApprove = async (signatureData?: string) => {
@@ -233,7 +227,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
     }
   };
 
-  const handleReject = async (signatureData?: string) => {
+  const handleReject = async () => {
     if (!permit || !rejectionNotes.trim()) {
       alert('Please provide rejection notes');
       return;
@@ -246,12 +240,6 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         rejection_notes: rejectionNotes
       };
 
-      if (signatureData) {
-        updateData.signature_image_url = signatureData;
-        updateData.signed_by = signerName;
-        updateData.signed_at = new Date().toISOString();
-      }
-
       const { error: updateError } = await supabase
         .from('permits')
         .update(updateData)
@@ -263,7 +251,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         {
           permit_id: permitId,
           action: 'Rejected',
-          performed_by: signerName || 'System Admin',
+          performed_by: 'System Admin',
           notes: rejectionNotes,
         },
       ]);
@@ -293,7 +281,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         detailed_sow: permit.detailed_sow,
         status: 'rejected',
         rejection_reason: rejectionNotes,
-        rejected_by: signerName || 'System Admin',
+        rejected_by: 'System Admin',
         rejected_at: new Date().toISOString(),
       };
 
@@ -310,11 +298,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
       }
 
       setShowRejectModal(false);
-      setShowSignatureModal(false);
       setRejectionNotes('');
-      signaturePadRef.current?.clear();
-      setSignerName('');
-      setPendingAction(null);
       setIsEditMode(false);
       await fetchPermitDetails();
     } catch (error) {
@@ -345,12 +329,6 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
 
     if (pendingAction === 'approve') {
       await handleApprove(signatureData);
-    } else if (pendingAction === 'reject') {
-      if (!rejectionNotes.trim()) {
-        alert('Please provide rejection notes');
-        return;
-      }
-      await handleReject(signatureData);
     }
   };
 
@@ -458,6 +436,30 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
     setEditFormData((prev: any) => ({ ...prev, [name]: value }));
   };
 
+  const handleDownloadPDF = () => {
+    if (!permit) return;
+
+    const pdfBlob = generatePermitPDF({
+      projectTitle: permit.ontivity_project_number || '',
+      workType: permit.type_of_permit || '',
+      requesterType: permit.requester_type || '',
+      requesterName: permit.requestor || '',
+      requesterEmail: permit.requester_email || '',
+      site: `${permit.city}, ${permit.state}`,
+      dateNeeded: permit.date_of_project_commencement || '',
+      expiryDate: permit.estimated_date_of_completion?.toString() || '',
+      workDescription: permit.detailed_sow || '',
+      safetyMeasures: '',
+      requiresSignature: permit.requires_signature || false,
+      signatureDataUrl: permit.signature_image_url,
+      submitterName: permit.signed_by || permit.requestor || '',
+      permitId: permit.permit_id,
+      status: permit.status,
+    });
+
+    const filename = `${permit.permit_id}.pdf`;
+    downloadPDF(pdfBlob, filename);
+  };
 
   const getStatusBadgeClass = (status: string) => {
     switch (status) {
@@ -516,8 +518,24 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
   return (
     <div className="flex-1 bg-gray-50 p-8 overflow-auto">
       <div className="max-w-6xl mx-auto">
-        <div className="flex items-center mb-8">
+        <div className="flex items-center justify-between mb-8">
           <img src="/image_(6).png" alt="Ontivity Logo" className="h-16 w-auto" />
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => onNavigate('submit')}
+              className="flex items-center gap-2 px-4 py-2 bg-[#0072BC] text-white rounded-lg hover:bg-[#005a94] transition-colors"
+            >
+              <PlusCircle size={18} />
+              New Form
+            </button>
+            <button
+              onClick={handleDownloadPDF}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+            >
+              <Download size={18} />
+              Download PDF
+            </button>
+          </div>
         </div>
 
         {permit.rejection_notes && (
@@ -977,7 +995,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                     {permit.requires_signature && !permit.signature_image_url && permit.status === 'Pending Approval' && (
                       <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                         <p className="text-xs text-yellow-800">
-                          This permit requires a signature before approval/rejection
+                          This permit requires a signature for approval
                         </p>
                       </div>
                     )}
@@ -1171,26 +1189,11 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
             <h2 className="text-xl font-bold text-gray-900 mb-4">
-              {pendingAction === 'approve' ? 'Approve' : 'Reject'} with Signature
+              Approve with Signature
             </h2>
             <p className="text-sm text-gray-600 mb-4">
-              This permit requires a signature. Please upload your signature image and enter your name.
+              This permit requires a signature for approval. Please draw your signature and enter your name.
             </p>
-
-            {pendingAction === 'reject' && (
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Rejection Notes <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  value={rejectionNotes}
-                  onChange={(e) => setRejectionNotes(e.target.value)}
-                  rows={3}
-                  placeholder="Enter rejection notes..."
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
-                />
-              </div>
-            )}
 
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1229,9 +1232,6 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                   signaturePadRef.current?.clear();
                   setSignerName('');
                   setPendingAction(null);
-                  if (pendingAction === 'reject') {
-                    setRejectionNotes('');
-                  }
                 }}
                 className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
               >
@@ -1242,7 +1242,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                 disabled={actionInProgress}
                 className="px-4 py-2 bg-[#0072BC] text-white rounded-lg hover:bg-[#005a94] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {pendingAction === 'approve' ? 'Approve' : 'Reject'} Permit
+                Approve Permit
               </button>
             </div>
           </div>
