@@ -637,7 +637,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                 <label htmlFor="requiresSignature" className="flex-1 cursor-pointer">
                   <span className="text-sm font-medium text-gray-900">Sign this document</span>
                   <p className="text-xs text-gray-600 mt-1">
-                    When checked, the approver will be required to provide a signature before they can approve this permit. The signature will be included in the PDF document.
+                    When checked, the approver will be required to provide a signature once they have approved this permit.
                   </p>
                 </label>
               </div>
