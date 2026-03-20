@@ -262,24 +262,13 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
         <div className="max-w-5xl mx-auto">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="bg-gradient-to-r from-gray-50 to-blue-50 -mx-6 -mt-6 px-6 pt-5 pb-4 mb-5 border-b-4 border-[#0072BC]">
-              <div className="flex items-start justify-between mb-3">
+              <div className="flex items-center justify-between">
                 <img src="/image_(6).png" alt="Ontivity Logo" className="h-12 w-auto" />
-                <div className="text-right">
-                  <p className="text-xs font-semibold text-gray-700">Date of Request</p>
-                  <p className="text-base font-bold text-[#0072BC]">{formData.date_of_request}</p>
-                </div>
-              </div>
-              <div className="mt-2">
-                <h1 className="text-2xl font-bold text-gray-900">Permit Application Form</h1>
-                <p className="text-xs text-gray-600 mt-1">Please complete all required fields to submit your permit request</p>
               </div>
             </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <h2 className="text-base font-semibold text-gray-900 mb-3 pb-1.5 border-b border-gray-200">
-                Project Information
-              </h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -314,22 +303,6 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     <option value="Division Manager">Division Manager</option>
                     <option value="Electronic Manager">Electronic Manager</option>
                   </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Date of Request <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="date_of_request"
-                    value={formData.date_of_request}
-                    readOnly
-                    disabled
-                    required
-                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed"
-                  />
-                  <p className="text-[10px] text-gray-500 mt-0.5">Auto-filled current date (MM/DD/YYYY)</p>
                 </div>
 
                 <div>
@@ -392,14 +365,6 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     required
                   />
                 </div>
-              </div>
-            </div>
-
-            <div>
-              <h2 className="text-base font-semibold text-gray-900 mb-3 pb-1.5 border-b border-gray-200">
-                Permit Details
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
                     Type of Permit <span className="text-red-500">*</span>
@@ -562,9 +527,6 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
             </div>
 
             <div>
-              <h2 className="text-base font-semibold text-gray-900 mb-2 pb-1.5 border-b border-gray-200">
-                Document Uploads
-              </h2>
               <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
                 <p className="text-xs font-medium text-blue-900 mb-2">
                   The following documents are required to be uploaded for permit compliance:
@@ -632,22 +594,19 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
             </div>
 
             <div>
-              <h2 className="text-base font-semibold text-gray-900 mb-3 pb-1.5 border-b border-gray-200">
-                Signature Requirement
-              </h2>
-              <div className="flex items-start gap-2 p-3 bg-gray-50 rounded-md border border-gray-200">
+              <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-md border border-gray-200">
                 <input
                   type="checkbox"
                   id="requiresSignature"
                   checked={requiresSignature}
                   onChange={(e) => setRequiresSignature(e.target.checked)}
-                  className="mt-0.5 w-3.5 h-3.5 text-[#0072BC] border-gray-300 rounded focus:ring-[#0072BC]"
+                  className="w-3.5 h-3.5 text-[#0072BC] border-gray-300 rounded focus:ring-[#0072BC] flex-shrink-0"
                 />
                 <label htmlFor="requiresSignature" className="flex-1 cursor-pointer">
                   <span className="text-xs font-medium text-gray-900">Sign this document</span>
-                  <p className="text-[10px] text-gray-600 mt-0.5">
-                    When checked, the approver will be required to provide a signature once they have approved this permit.
-                  </p>
+                  <span className="text-[10px] text-gray-600 ml-1">
+                    (When checked, the approver will be required to provide a signature once they have approved this permit.)
+                  </span>
                 </label>
               </div>
             </div>
