@@ -264,6 +264,12 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
             <div className="bg-gradient-to-r from-gray-50 to-blue-50 -mx-6 -mt-6 px-6 pt-5 pb-4 mb-5 border-b-4 border-[#0072BC]">
               <div className="flex items-center justify-between">
                 <img src="/image_(6).png" alt="Ontivity Logo" className="h-12 w-auto" />
+                <div className="text-right">
+                  <div className="text-xs font-medium text-gray-600 mb-1">Date of Request</div>
+                  <div className="text-sm font-semibold text-gray-900 px-3 py-1.5 bg-white/60 rounded-md border border-gray-200">
+                    {formData.date_of_request}
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -281,7 +287,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     readOnly
                     disabled
                     required
-                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed"
                   />
                   <p className="text-[10px] text-gray-500 mt-0.5">Auto-filled from logged in user</p>
                 </div>
@@ -295,7 +301,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     value={formData.requester_type}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
                   >
                     <option value="">Select requester type</option>
                     <option value="Project Manager">Project Manager</option>
@@ -330,7 +336,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     value={formData.performing_entity}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
                   >
                     <option value="">Select entity</option>
                     <option value="ETT">ETT</option>
@@ -365,6 +371,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     required
                   />
                 </div>
+
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
                     Type of Permit <span className="text-red-500">*</span>
@@ -374,7 +381,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     value={formData.type_of_permit}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
                   >
                     <option value="">Select type</option>
                     <option value="Electrical">Electrical</option>
@@ -383,42 +390,29 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                   </select>
                 </div>
 
-                {formData.type_of_permit === 'Electrical' && (
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Utility Provider <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="utility_provider"
-                      value={formData.utility_provider}
-                      onChange={handleInputChange}
-                      required
-                      placeholder="e.g., Pacific Gas & Electric"
-                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
-                    />
-                  </div>
-                )}
+                <div></div>
+                <div></div>
 
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    State <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    name="state"
-                    value={formData.state}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
-                  >
-                    <option value="">Select state</option>
-                    {US_STATES_AND_TERRITORIES.map((state) => (
-                      <option key={state.value} value={state.label}>
-                        {state.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {formData.type_of_permit === 'Electrical' && (
+                  <>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Utility Provider <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="utility_provider"
+                        value={formData.utility_provider}
+                        onChange={handleInputChange}
+                        required
+                        placeholder="e.g., Pacific Gas & Electric"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                      />
+                    </div>
+                    <div></div>
+                    <div></div>
+                  </>
+                )}
 
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -431,8 +425,28 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     onChange={handleInputChange}
                     required
                     placeholder="Enter county name"
-                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    State <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    name="state"
+                    value={formData.state}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                  >
+                    <option value="">Select state</option>
+                    {US_STATES_AND_TERRITORIES.map((state) => (
+                      <option key={state.value} value={state.label}>
+                        {state.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
@@ -446,7 +460,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     onChange={handleInputChange}
                     required
                     placeholder="e.g., Los Angeles"
-                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
                   />
                 </div>
 
@@ -461,7 +475,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     onChange={handleInputChange}
                     required
                     placeholder="e.g., SBA, CCI, ATC"
-                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
                   />
                 </div>
 
@@ -476,7 +490,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     onChange={handleInputChange}
                     required
                     placeholder="Customer name"
-                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
                   />
                 </div>
 
@@ -494,7 +508,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                       required
                       placeholder="0.00"
                       step="0.01"
-                      className="w-full pl-6 pr-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                      className="w-full pl-6 pr-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
                     />
                   </div>
                 </div>
@@ -520,7 +534,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     required
                     rows={4}
                     placeholder="Provide detailed description of the work to be performed..."
-                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
                   />
                 </div>
               </div>

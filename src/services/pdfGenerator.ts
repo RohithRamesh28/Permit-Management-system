@@ -211,23 +211,25 @@ export const generatePermitPDF = (formData: PermitFormData): Blob => {
     doc.setFont('helvetica', 'bold');
     doc.text('SIGNATURE:', margin + 2, yPos + 4);
 
+    doc.setDrawColor(BORDER_GRAY);
+    doc.setLineWidth(0.5);
+    doc.line(margin + 4, yPos + 18, margin + 80, yPos + 18);
+
     try {
-      doc.addImage(formData.signatureDataUrl, 'PNG', margin + 4, yPos + 6, 60, 20);
+      doc.addImage(formData.signatureDataUrl, 'PNG', margin + 4, yPos + 6, 60, 12);
     } catch (error) {
       console.error('Error adding signature to PDF:', error);
     }
 
-    doc.setDrawColor(BORDER_GRAY);
-    doc.setLineWidth(0.5);
-    doc.line(margin + 70, yPos + 28, margin + 120, yPos + 28);
-
     doc.setTextColor(DARK_GRAY);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Signed by: ${formData.requestor}`, margin + 70, yPos + 32);
+    doc.text(`Signed by: ${formData.requestor}`, margin + 4, yPos + 22);
 
-    doc.line(margin + 125, yPos + 28, pageWidth - margin, yPos + 28);
-    doc.text(`Date: ${new Date().toLocaleDateString()}`, margin + 125, yPos + 32);
+    doc.setDrawColor(BORDER_GRAY);
+    doc.setLineWidth(0.5);
+    doc.line(margin + 90, yPos + 18, pageWidth - margin - 4, yPos + 18);
+    doc.text(`Date: ${new Date().toLocaleDateString()}`, margin + 90, yPos + 22);
 
     yPos += 35;
   } else if (formData.requiresSignature) {
