@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, CheckCircle, XCircle, FileText, Clock, Eye, PlusCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, FileText, Clock, Eye, PlusCircle, CreditCard as Edit2 } from 'lucide-react';
 import { supabase, Permit, PermitDocument, PermitAuditLog } from '../lib/supabase';
 import { SignaturePad, SignaturePadRef } from './SignaturePad';
 import { generatePermitPDF } from '../services/pdfGenerator';
@@ -24,6 +24,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
   const [signerName, setSignerName] = useState('');
   const signaturePadRef = useRef<SignaturePadRef>(null);
   const [previewDocument, setPreviewDocument] = useState<{url: string; name: string; type: string} | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   useEffect(() => {
     fetchPermitDetails();
@@ -503,6 +504,21 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
           </div>
         )}
 
+        {permit.rejection_notes && (
+          <div className="bg-red-50 border-l-4 border-red-500 p-6 rounded-r-lg mb-6">
+            <div className="flex items-start">
+              <XCircle className="text-red-500 mt-0.5 mr-3 flex-shrink-0" size={24} />
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-red-900 mb-2">
+                  Permit Rejected
+                </h3>
+                <p className="text-red-800 font-medium mb-1">Rejection Reason:</p>
+                <p className="text-red-700">{permit.rejection_notes}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
           <div className="p-6 border-b border-gray-200 flex justify-between items-start">
             <div>
@@ -512,9 +528,20 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                 <p className="text-sm text-green-600 mt-2 font-medium">Form sent to SharePoint</p>
               )}
             </div>
-            <span className={`px-4 py-2 rounded-full text-sm font-medium ${getStatusBadgeClass(permit.status)}`}>
-              {permit.status}
-            </span>
+            <div className="flex items-center gap-3">
+              <span className={`px-4 py-2 rounded-full text-sm font-medium ${getStatusBadgeClass(permit.status)}`}>
+                {permit.status}
+              </span>
+              {(permit.status === 'Active' || permit.status === 'Rejected') && !isEditMode && (
+                <button
+                  onClick={() => setIsEditMode(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-[#0072BC] text-white rounded-lg hover:bg-[#005a94] transition-colors"
+                >
+                  <Edit2 size={18} />
+                  Edit
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="p-6">
@@ -605,13 +632,6 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                   <p className="text-gray-700 whitespace-pre-wrap">{permit.detailed_sow}</p>
                 </div>
 
-                {permit.rejection_notes && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                    <h2 className="text-lg font-semibold text-red-900 mb-2">Rejection Notes</h2>
-                    <p className="text-red-800">{permit.rejection_notes}</p>
-                  </div>
-                )}
-
                 {documents.length > 0 && (
                   <div>
                     <h2 className="text-lg font-semibold text-gray-900 mb-4">Uploaded Documents</h2>
@@ -643,7 +663,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                   <div className="bg-gray-50 rounded-lg p-6">
                     <h2 className="text-lg font-semibold text-gray-900 mb-4">Actions</h2>
 
-                    {permit.requires_signature && !permit.signature_image_url && (
+                    {permit.requires_signature && !permit.signature_image_url && permit.status === 'Pending Approval' && (
                       <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                         <p className="text-xs text-yellow-800">
                           This permit requires a signature before approval/rejection
@@ -652,7 +672,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                     )}
 
                     <div className="space-y-3">
-                      {permit.status === 'Pending Approval' && (
+                      {permit.status === 'Pending Approval' && !isEditMode && (
                         <>
                           <button
                             onClick={handleApproveClick}
@@ -672,7 +692,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                           </button>
                         </>
                       )}
-                      {permit.status === 'Rejected' && (
+                      {permit.status === 'Rejected' && isEditMode && (
                         <button
                           onClick={handleResubmit}
                           disabled={actionInProgress}
@@ -681,13 +701,21 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                           Resubmit
                         </button>
                       )}
-                      {permit.status === 'Active' && (
+                      {permit.status === 'Active' && isEditMode && (
                         <button
                           onClick={handleClose}
                           disabled={actionInProgress}
                           className="w-full flex items-center justify-center gap-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50"
                         >
                           Close Permit
+                        </button>
+                      )}
+                      {isEditMode && (
+                        <button
+                          onClick={() => setIsEditMode(false)}
+                          className="w-full flex items-center justify-center gap-2 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+                        >
+                          Cancel Edit
                         </button>
                       )}
                     </div>
