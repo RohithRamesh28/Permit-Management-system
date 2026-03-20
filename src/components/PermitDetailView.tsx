@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, CheckCircle, XCircle, FileText, Clock, Eye, PlusCircle, CreditCard as Edit2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, FileText, Clock, Eye, PlusCircle, CreditCard as Edit2, AlertCircle } from 'lucide-react';
 import { supabase, Permit, PermitDocument, PermitAuditLog } from '../lib/supabase';
 import { SignaturePad, SignaturePadRef } from './SignaturePad';
 import { generatePermitPDF } from '../services/pdfGenerator';
@@ -31,6 +31,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
   const [isEditMode, setIsEditMode] = useState(false);
   const { jobs, loading: jobsLoading } = useSharePointJobs();
   const [editFormData, setEditFormData] = useState<any>(null);
+  const [showResubmitConfirmModal, setShowResubmitConfirmModal] = useState(false);
 
   useEffect(() => {
     fetchPermitDetails();
@@ -117,7 +118,10 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
     setActionInProgress(true);
 
     try {
-      const updateData: any = { status: 'Active' };
+      const updateData: any = {
+        status: 'Active',
+        rejection_notes: null
+      };
       let pdfUrl = null;
 
       if (signatureData) {
@@ -350,14 +354,18 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
     }
   };
 
+  const handleResubmitClick = () => {
+    setShowResubmitConfirmModal(true);
+  };
+
   const handleResubmit = async () => {
     if (!permit || !editFormData) return;
     setActionInProgress(true);
+    setShowResubmitConfirmModal(false);
 
     try {
       const updateData = {
         status: 'Pending Approval',
-        rejection_notes: null,
         ontivity_project_number: editFormData.ontivity_project_number,
         performing_entity: editFormData.performing_entity,
         date_of_project_commencement: editFormData.date_of_project_commencement,
@@ -540,7 +548,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
               <span className={`px-4 py-2 rounded-full text-sm font-medium ${getStatusBadgeClass(permit.status)}`}>
                 {permit.status}
               </span>
-              {!readOnlyMode && (permit.status === 'Active' || (permit.status === 'Rejected' && !isEditMode)) && (
+              {!readOnlyMode && (permit.status === 'Active' || (permit.status === 'Rejected' && !isEditMode) || (permit.status === 'Pending Approval' && permit.rejection_notes && !isEditMode)) && (
                 <button
                   onClick={() => setIsEditMode(true)}
                   className="flex items-center gap-2 px-4 py-2 bg-[#0072BC] text-white rounded-lg hover:bg-[#005a94] transition-colors"
@@ -975,7 +983,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                     )}
 
                     <div className="space-y-3">
-                      {permit.status === 'Pending Approval' && !isEditMode && (
+                      {permit.status === 'Pending Approval' && !permit.rejection_notes && !isEditMode && (
                         <>
                           <button
                             onClick={handleApproveClick}
@@ -995,6 +1003,32 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                           </button>
                         </>
                       )}
+                      {permit.status === 'Pending Approval' && permit.rejection_notes && isEditMode && (
+                        <>
+                          <button
+                            onClick={handleApproveClick}
+                            disabled={actionInProgress}
+                            className="w-full flex items-center justify-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                          >
+                            <CheckCircle size={18} />
+                            Approve
+                          </button>
+                          <button
+                            onClick={handleRejectClick}
+                            disabled={actionInProgress}
+                            className="w-full flex items-center justify-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+                          >
+                            <XCircle size={18} />
+                            Reject
+                          </button>
+                          <button
+                            onClick={() => setIsEditMode(false)}
+                            className="w-full flex items-center justify-center gap-2 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      )}
                       {permit.status === 'Active' && isEditMode && (
                         <button
                           onClick={() => setIsEditMode(false)}
@@ -1006,7 +1040,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                       {permit.status === 'Rejected' && isEditMode && (
                         <>
                           <button
-                            onClick={handleResubmit}
+                            onClick={handleResubmitClick}
                             disabled={actionInProgress}
                             className="w-full flex items-center justify-center gap-2 bg-[#0072BC] text-white px-4 py-2 rounded-lg hover:bg-[#005a94] transition-colors disabled:opacity-50"
                           >
@@ -1209,6 +1243,42 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                 className="px-4 py-2 bg-[#0072BC] text-white rounded-lg hover:bg-[#005a94] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {pendingAction === 'approve' ? 'Approve' : 'Reject'} Permit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showResubmitConfirmModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <AlertCircle className="text-yellow-600" size={24} />
+              Confirm Resubmission
+            </h2>
+
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm font-semibold text-red-900 mb-2">Previous Rejection Note:</p>
+              <p className="text-sm text-red-800">{permit?.rejection_notes}</p>
+            </div>
+
+            <p className="text-gray-700 mb-6">
+              Are you sure you have addressed all the changes mentioned in the rejection note?
+            </p>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowResubmitConfirmModal(false)}
+                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleResubmit}
+                disabled={actionInProgress}
+                className="px-6 py-2 bg-[#0072BC] text-white rounded-lg hover:bg-[#005a94] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Yes, Resubmit
               </button>
             </div>
           </div>
