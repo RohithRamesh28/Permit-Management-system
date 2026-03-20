@@ -258,31 +258,31 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
         </div>
       )}
 
-      <div className="flex-1 bg-gray-50 p-8 overflow-auto">
-        <div className="max-w-4xl mx-auto">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
-            <div className="bg-gradient-to-r from-gray-50 to-blue-50 -mx-8 -mt-8 px-8 pt-8 pb-6 mb-8 border-b-4 border-[#0072BC]">
-              <div className="flex items-start justify-between mb-4">
-                <img src="/image_(6).png" alt="Ontivity Logo" className="h-16 w-auto" />
+      <div className="flex-1 bg-gray-50 p-6 overflow-auto">
+        <div className="max-w-5xl mx-auto">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="bg-gradient-to-r from-gray-50 to-blue-50 -mx-6 -mt-6 px-6 pt-5 pb-4 mb-5 border-b-4 border-[#0072BC]">
+              <div className="flex items-start justify-between mb-3">
+                <img src="/image_(6).png" alt="Ontivity Logo" className="h-12 w-auto" />
                 <div className="text-right">
-                  <p className="text-sm font-semibold text-gray-700">Date of Request</p>
-                  <p className="text-lg font-bold text-[#0072BC]">{formData.date_of_request}</p>
+                  <p className="text-xs font-semibold text-gray-700">Date of Request</p>
+                  <p className="text-base font-bold text-[#0072BC]">{formData.date_of_request}</p>
                 </div>
               </div>
-              <div className="mt-4">
-                <h1 className="text-3xl font-bold text-gray-900">Permit Application Form</h1>
-                <p className="text-sm text-gray-600 mt-2">Please complete all required fields to submit your permit request</p>
+              <div className="mt-2">
+                <h1 className="text-2xl font-bold text-gray-900">Permit Application Form</h1>
+                <p className="text-xs text-gray-600 mt-1">Please complete all required fields to submit your permit request</p>
               </div>
             </div>
 
-          <form onSubmit={handleSubmit} className="space-y-8">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
+              <h2 className="text-base font-semibold text-gray-900 mb-3 pb-1.5 border-b border-gray-200">
                 Project Information
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
                     Requestor <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -292,13 +292,13 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     readOnly
                     disabled
                     required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Auto-filled from logged in user</p>
+                  <p className="text-[10px] text-gray-500 mt-0.5">Auto-filled from logged in user</p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
                     Requester Type <span className="text-red-500">*</span>
                   </label>
                   <select
@@ -306,7 +306,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     value={formData.requester_type}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
                   >
                     <option value="">Select requester type</option>
                     <option value="Project Manager">Project Manager</option>
@@ -317,7 +317,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
                     Date of Request <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -327,13 +327,13 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     readOnly
                     disabled
                     required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Auto-filled current date (MM/DD/YYYY)</p>
+                  <p className="text-[10px] text-gray-500 mt-0.5">Auto-filled current date (MM/DD/YYYY)</p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
                     Ontivity Project Number <span className="text-red-500">*</span>
                   </label>
                   <SearchableDropdown
@@ -345,11 +345,11 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     required
                     loading={jobsLoading}
                   />
-                  <p className="text-xs text-gray-500 mt-1">Values from All Division Jobs</p>
+                  <p className="text-[10px] text-gray-500 mt-0.5">Values from All Division Jobs</p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
                     Performing Entity <span className="text-red-500">*</span>
                   </label>
                   <select
@@ -357,7 +357,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     value={formData.performing_entity}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
                   >
                     <option value="">Select entity</option>
                     <option value="ETT">ETT</option>
@@ -370,7 +370,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
                     Date of Project Commencement <span className="text-red-500">*</span>
                   </label>
                   <DateInput
@@ -382,7 +382,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
                     Estimated Date of Completion <span className="text-red-500">*</span>
                   </label>
                   <DateInput
@@ -396,12 +396,12 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
             </div>
 
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
+              <h2 className="text-base font-semibold text-gray-900 mb-3 pb-1.5 border-b border-gray-200">
                 Permit Details
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
                     Type of Permit <span className="text-red-500">*</span>
                   </label>
                   <select
@@ -409,7 +409,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     value={formData.type_of_permit}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
                   >
                     <option value="">Select type</option>
                     <option value="Electrical">Electrical</option>
@@ -420,7 +420,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
 
                 {formData.type_of_permit === 'Electrical' && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
                       Utility Provider <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -430,13 +430,13 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                       onChange={handleInputChange}
                       required
                       placeholder="e.g., Pacific Gas & Electric"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
                     />
                   </div>
                 )}
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
                     State <span className="text-red-500">*</span>
                   </label>
                   <select
@@ -444,7 +444,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     value={formData.state}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
                   >
                     <option value="">Select state</option>
                     {US_STATES_AND_TERRITORIES.map((state) => (
@@ -456,7 +456,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
                     County <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -466,12 +466,12 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     onChange={handleInputChange}
                     required
                     placeholder="Enter county name"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
                     City <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -481,12 +481,12 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     onChange={handleInputChange}
                     required
                     placeholder="e.g., Los Angeles"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
                     Property Owner <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -496,12 +496,12 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     onChange={handleInputChange}
                     required
                     placeholder="e.g., SBA, CCI, ATC"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
                     End Customer <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -511,16 +511,16 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     onChange={handleInputChange}
                     required
                     placeholder="Customer name"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
                     Project Value <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                    <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">$</span>
                     <input
                       type="number"
                       name="project_value"
@@ -529,23 +529,23 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                       required
                       placeholder="0.00"
                       step="0.01"
-                      className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                      className="w-full pl-6 pr-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Actual Date of Project Completion</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Actual Date of Project Completion</label>
                   <DateInput
                     name="actual_date_of_completion"
                     value={formData.actual_date_of_completion}
                     onChange={handleDateChange}
                   />
-                  <p className="text-xs text-gray-500 mt-1">Optional - Fill in when project is completed</p>
+                  <p className="text-[10px] text-gray-500 mt-0.5">Optional - Fill in when project is completed</p>
                 </div>
 
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div className="md:col-span-3">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
                     Detailed Scope of Work <span className="text-red-500">*</span>
                   </label>
                   <textarea
@@ -553,23 +553,23 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     value={formData.detailed_sow}
                     onChange={handleInputChange}
                     required
-                    rows={6}
+                    rows={4}
                     placeholder="Provide detailed description of the work to be performed..."
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
                   />
                 </div>
               </div>
             </div>
 
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-2 pb-2 border-b border-gray-200">
+              <h2 className="text-base font-semibold text-gray-900 mb-2 pb-1.5 border-b border-gray-200">
                 Document Uploads
               </h2>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                <p className="text-sm font-medium text-blue-900 mb-3">
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
+                <p className="text-xs font-medium text-blue-900 mb-2">
                   The following documents are required to be uploaded for permit compliance:
                 </p>
-                <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
+                <ul className="text-xs text-blue-800 space-y-0.5 list-disc list-inside">
                   <li>Pre photos of area that work is being performed</li>
                   <li>Photos of identification signs at entrance</li>
                   <li>Photos of work in progress: Trench depth per requirements</li>
@@ -582,12 +582,12 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                 </ul>
               </div>
 
-              <div className="border border-gray-200 rounded-lg p-6">
-                <label className="flex flex-col items-center justify-center gap-3 px-4 py-8 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                  <Upload size={32} className="text-gray-400" />
+              <div className="border border-gray-200 rounded-md p-4">
+                <label className="flex flex-col items-center justify-center gap-2 px-3 py-5 border-2 border-dashed border-gray-300 rounded-md cursor-pointer hover:bg-gray-50 transition-colors">
+                  <Upload size={24} className="text-gray-400" />
                   <div className="text-center">
-                    <span className="text-sm font-medium text-gray-700">Choose Files</span>
-                    <p className="text-xs text-gray-500 mt-1">Select multiple images or PDFs</p>
+                    <span className="text-xs font-medium text-gray-700">Choose Files</span>
+                    <p className="text-[10px] text-gray-500 mt-0.5">Select multiple images or PDFs</p>
                   </div>
                   <input
                     type="file"
@@ -599,27 +599,27 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                 </label>
 
                 {uploadedFiles.length > 0 && (
-                  <div className="mt-4">
-                    <p className="text-sm font-medium text-gray-700 mb-3">
+                  <div className="mt-3">
+                    <p className="text-xs font-medium text-gray-700 mb-2">
                       Selected Files ({uploadedFiles.length})
                     </p>
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
                       {uploadedFiles.map((file, index) => (
                         <div
                           key={index}
-                          className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg"
+                          className="flex items-center justify-between p-2 bg-gray-50 border border-gray-200 rounded-md"
                         >
-                          <div className="flex items-center gap-3 min-w-0 flex-1">
-                            <FileText size={18} className="text-gray-400 flex-shrink-0" />
-                            <span className="text-sm text-gray-700 truncate">{file.name}</span>
-                            <span className="text-xs text-gray-500 flex-shrink-0">
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <FileText size={14} className="text-gray-400 flex-shrink-0" />
+                            <span className="text-xs text-gray-700 truncate">{file.name}</span>
+                            <span className="text-[10px] text-gray-500 flex-shrink-0">
                               ({(file.size / 1024).toFixed(1)} KB)
                             </span>
                           </div>
                           <button
                             type="button"
                             onClick={() => handleRemoveFile(index)}
-                            className="text-red-600 hover:text-red-800 text-sm font-medium ml-3 flex-shrink-0"
+                            className="text-red-600 hover:text-red-800 text-xs font-medium ml-2 flex-shrink-0"
                           >
                             Remove
                           </button>
@@ -632,31 +632,31 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
             </div>
 
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
+              <h2 className="text-base font-semibold text-gray-900 mb-3 pb-1.5 border-b border-gray-200">
                 Signature Requirement
               </h2>
-              <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="flex items-start gap-2 p-3 bg-gray-50 rounded-md border border-gray-200">
                 <input
                   type="checkbox"
                   id="requiresSignature"
                   checked={requiresSignature}
                   onChange={(e) => setRequiresSignature(e.target.checked)}
-                  className="mt-1 w-4 h-4 text-[#0072BC] border-gray-300 rounded focus:ring-[#0072BC]"
+                  className="mt-0.5 w-3.5 h-3.5 text-[#0072BC] border-gray-300 rounded focus:ring-[#0072BC]"
                 />
                 <label htmlFor="requiresSignature" className="flex-1 cursor-pointer">
-                  <span className="text-sm font-medium text-gray-900">Sign this document</span>
-                  <p className="text-xs text-gray-600 mt-1">
+                  <span className="text-xs font-medium text-gray-900">Sign this document</span>
+                  <p className="text-[10px] text-gray-600 mt-0.5">
                     When checked, the approver will be required to provide a signature once they have approved this permit.
                   </p>
                 </label>
               </div>
             </div>
 
-            <div className="flex justify-end pt-6 border-t border-gray-200">
+            <div className="flex justify-end pt-4 border-t border-gray-200">
               <button
                 type="submit"
                 disabled={submitting}
-                className="px-6 py-2 bg-[#0072BC] text-white rounded-lg hover:bg-[#005a94] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-5 py-1.5 text-sm bg-[#0072BC] text-white rounded-md hover:bg-[#005a94] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitting ? 'Submitting...' : 'Submit Permit Request'}
               </button>
