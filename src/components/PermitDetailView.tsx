@@ -191,6 +191,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
       signaturePadRef.current?.clear();
       setSignerName('');
       setPendingAction(null);
+      setIsEditMode(false);
       await fetchPermitDetails();
     } catch (error) {
       console.error('Error approving permit:', error);
@@ -282,6 +283,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
       signaturePadRef.current?.clear();
       setSignerName('');
       setPendingAction(null);
+      setIsEditMode(false);
       await fetchPermitDetails();
     } catch (error) {
       console.error('Error rejecting permit:', error);
@@ -384,6 +386,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         console.error('Error sending to Power Automate:', flowError);
       }
 
+      setIsEditMode(false);
       await fetchPermitDetails();
     } catch (error) {
       console.error('Error resubmitting permit:', error);
@@ -414,6 +417,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         },
       ]);
 
+      setIsEditMode(false);
       await fetchPermitDetails();
     } catch (error) {
       console.error('Error closing permit:', error);
