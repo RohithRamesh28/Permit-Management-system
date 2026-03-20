@@ -645,10 +645,14 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                 ) : (
                   <>
                     <div>
+                      <div className="flex items-center mb-6 pb-4 border-b border-gray-200">
+                        <img src="/image_(6).png" alt="Ontivity Logo" className="h-12 w-auto" />
+                      </div>
+
                       <h2 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
                         Project Information
                       </h2>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             Requestor <span className="text-red-500">*</span>
@@ -693,6 +697,9 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
                           />
                         </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
 
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -795,7 +802,9 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                             />
                           </div>
                         )}
+                      </div>
 
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             State <span className="text-red-500">*</span>
@@ -845,6 +854,9 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
                           />
                         </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
 
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
