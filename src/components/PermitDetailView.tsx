@@ -219,6 +219,8 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
       setPendingAction(null);
       setIsEditMode(false);
       await fetchPermitDetails();
+
+      onNavigate('list');
     } catch (error) {
       console.error('Error approving permit:', error);
       alert('Error approving permit. Please try again.');
@@ -301,6 +303,8 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
       setRejectionNotes('');
       setIsEditMode(false);
       await fetchPermitDetails();
+
+      onNavigate('list');
     } catch (error) {
       console.error('Error rejecting permit:', error);
       alert('Error rejecting permit. Please try again.');
@@ -419,6 +423,8 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
 
       setIsEditMode(false);
       await fetchPermitDetails();
+
+      onNavigate('list');
     } catch (error) {
       console.error('Error resubmitting permit:', error);
       alert('Error resubmitting permit. Please try again.');
