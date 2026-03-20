@@ -4,6 +4,10 @@ import { supabase, Permit, PermitDocument, PermitAuditLog } from '../lib/supabas
 import { SignaturePad, SignaturePadRef } from './SignaturePad';
 import { generatePermitPDF } from '../services/pdfGenerator';
 import DocumentPreviewModal from './DocumentPreviewModal';
+import SearchableDropdown from './SearchableDropdown';
+import { useSharePointJobs } from '../hooks/useSharePointJobs';
+import { US_STATES_AND_TERRITORIES } from '../utils/usStates';
+import DateInput from './DateInput';
 
 interface PermitDetailViewProps {
   permitId: string;
@@ -25,10 +29,34 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
   const signaturePadRef = useRef<SignaturePadRef>(null);
   const [previewDocument, setPreviewDocument] = useState<{url: string; name: string; type: string} | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
+  const { jobs, loading: jobsLoading } = useSharePointJobs();
+  const [editFormData, setEditFormData] = useState<any>(null);
 
   useEffect(() => {
     fetchPermitDetails();
   }, [permitId]);
+
+  useEffect(() => {
+    if (permit && isEditMode) {
+      setEditFormData({
+        ontivity_project_number: permit.ontivity_project_number || '',
+        performing_entity: permit.performing_entity || '',
+        date_of_project_commencement: permit.date_of_project_commencement || '',
+        estimated_date_of_completion: permit.estimated_date_of_completion || '',
+        type_of_permit: permit.type_of_permit || '',
+        utility_provider: permit.utility_provider || '',
+        state: permit.state || '',
+        county_or_parish: permit.county_or_parish || '',
+        city: permit.city || '',
+        property_owner: permit.property_owner || '',
+        end_customer: permit.end_customer || '',
+        project_value: permit.project_value?.toString() || '',
+        actual_date_of_completion: permit.actual_date_of_completion || '',
+        detailed_sow: permit.detailed_sow || '',
+        requester_type: permit.requester_type || '',
+      });
+    }
+  }, [permit, isEditMode]);
 
   const fetchPermitDetails = async () => {
     try {
@@ -323,16 +351,33 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
   };
 
   const handleResubmit = async () => {
-    if (!permit) return;
+    if (!permit || !editFormData) return;
     setActionInProgress(true);
 
     try {
+      const updateData = {
+        status: 'Pending Approval',
+        rejection_notes: null,
+        ontivity_project_number: editFormData.ontivity_project_number,
+        performing_entity: editFormData.performing_entity,
+        date_of_project_commencement: editFormData.date_of_project_commencement,
+        estimated_date_of_completion: editFormData.estimated_date_of_completion,
+        type_of_permit: editFormData.type_of_permit,
+        utility_provider: editFormData.type_of_permit === 'Electrical' ? editFormData.utility_provider : null,
+        state: editFormData.state,
+        county_or_parish: editFormData.county_or_parish,
+        city: editFormData.city,
+        property_owner: editFormData.property_owner,
+        end_customer: editFormData.end_customer,
+        project_value: parseFloat(editFormData.project_value) || 0,
+        actual_date_of_completion: editFormData.actual_date_of_completion || null,
+        detailed_sow: editFormData.detailed_sow,
+        requester_type: editFormData.requester_type,
+      };
+
       const { error: updateError } = await supabase
         .from('permits')
-        .update({
-          status: 'Pending Approval',
-          rejection_notes: null
-        })
+        .update(updateData)
         .eq('id', permitId);
 
       if (updateError) throw updateError;
@@ -342,7 +387,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
           permit_id: permitId,
           action: 'Resubmitted',
           performed_by: permit.requestor,
-          notes: 'Permit resubmitted for approval',
+          notes: 'Permit resubmitted for approval with updates',
         },
       ]);
 
@@ -354,21 +399,21 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         submitted_by: permit.requestor,
         submitted_by_email: permit.requester_email || '',
         requestor: permit.requestor,
-        requester_type: permit.requester_type || '',
-        ontivity_project_number: permit.ontivity_project_number,
-        performing_entity: permit.performing_entity,
+        requester_type: editFormData.requester_type,
+        ontivity_project_number: editFormData.ontivity_project_number,
+        performing_entity: editFormData.performing_entity,
         date_of_request: permit.date_of_request,
-        date_of_project_commencement: permit.date_of_project_commencement,
-        estimated_date_of_completion: permit.estimated_date_of_completion || '',
-        type_of_permit: permit.type_of_permit,
-        utility_provider: permit.utility_provider || '',
-        state: permit.state,
-        county_or_parish: permit.county_or_parish,
-        city: permit.city,
-        property_owner: permit.property_owner,
-        end_customer: permit.end_customer,
-        project_value: permit.project_value,
-        detailed_sow: permit.detailed_sow,
+        date_of_project_commencement: editFormData.date_of_project_commencement,
+        estimated_date_of_completion: editFormData.estimated_date_of_completion,
+        type_of_permit: editFormData.type_of_permit,
+        utility_provider: editFormData.utility_provider || '',
+        state: editFormData.state,
+        county_or_parish: editFormData.county_or_parish,
+        city: editFormData.city,
+        property_owner: editFormData.property_owner,
+        end_customer: editFormData.end_customer,
+        project_value: parseFloat(editFormData.project_value) || 0,
+        detailed_sow: editFormData.detailed_sow,
         status: 'resubmitted',
         resubmitted_by: permit.requestor,
         resubmitted_at: new Date().toISOString(),
@@ -394,6 +439,15 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
     } finally {
       setActionInProgress(false);
     }
+  };
+
+  const handleEditInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setEditFormData((prev: any) => ({ ...prev, [name]: value }));
+  };
+
+  const handleEditDateChange = (name: string, value: string) => {
+    setEditFormData((prev: any) => ({ ...prev, [name]: value }));
   };
 
 
@@ -486,7 +540,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
               <span className={`px-4 py-2 rounded-full text-sm font-medium ${getStatusBadgeClass(permit.status)}`}>
                 {permit.status}
               </span>
-              {permit.status === 'Rejected' && !isEditMode && (
+              {!readOnlyMode && (permit.status === 'Active' || (permit.status === 'Rejected' && !isEditMode)) && (
                 <button
                   onClick={() => setIsEditMode(true)}
                   className="flex items-center gap-2 px-4 py-2 bg-[#0072BC] text-white rounded-lg hover:bg-[#005a94] transition-colors"
@@ -501,90 +555,373 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
           <div className="p-6">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2 space-y-6">
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900 mb-4">Project Information</h2>
-                  <div className="grid grid-cols-2 gap-4">
+                {!isEditMode ? (
+                  <>
                     <div>
-                      <p className="text-sm text-gray-500">Requestor</p>
-                      <p className="text-gray-900 font-medium">{permit.requestor}</p>
-                    </div>
-                    {permit.requester_type && (
-                      <div>
-                        <p className="text-sm text-gray-500">Requester Type</p>
-                        <p className="text-gray-900 font-medium">{permit.requester_type}</p>
+                      <h2 className="text-lg font-semibold text-gray-900 mb-4">Project Information</h2>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-sm text-gray-500">Requestor</p>
+                          <p className="text-gray-900 font-medium">{permit.requestor}</p>
+                        </div>
+                        {permit.requester_type && (
+                          <div>
+                            <p className="text-sm text-gray-500">Requester Type</p>
+                            <p className="text-gray-900 font-medium">{permit.requester_type}</p>
+                          </div>
+                        )}
+                        <div>
+                          <p className="text-sm text-gray-500">Performing Entity</p>
+                          <p className="text-gray-900 font-medium">{permit.performing_entity}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Date of Request</p>
+                          <p className="text-gray-900 font-medium">{formatDate(permit.date_of_request)}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Project Commencement</p>
+                          <p className="text-gray-900 font-medium">{formatDate(permit.date_of_project_commencement)}</p>
+                        </div>
+                        {permit.estimated_date_of_completion && (
+                          <div>
+                            <p className="text-sm text-gray-500">Estimated Completion</p>
+                            <p className="text-gray-900 font-medium">{formatDate(permit.estimated_date_of_completion)}</p>
+                          </div>
+                        )}
+                        {permit.actual_date_of_completion && (
+                          <div>
+                            <p className="text-sm text-gray-500">Actual Completion</p>
+                            <p className="text-gray-900 font-medium">{formatDate(permit.actual_date_of_completion)}</p>
+                          </div>
+                        )}
                       </div>
-                    )}
-                    <div>
-                      <p className="text-sm text-gray-500">Performing Entity</p>
-                      <p className="text-gray-900 font-medium">{permit.performing_entity}</p>
                     </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Date of Request</p>
-                      <p className="text-gray-900 font-medium">{formatDate(permit.date_of_request)}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Project Commencement</p>
-                      <p className="text-gray-900 font-medium">{formatDate(permit.date_of_project_commencement)}</p>
-                    </div>
-                    {permit.estimated_date_of_completion && (
-                      <div>
-                        <p className="text-sm text-gray-500">Estimated Completion</p>
-                        <p className="text-gray-900 font-medium">{formatDate(permit.estimated_date_of_completion)}</p>
-                      </div>
-                    )}
-                    {permit.actual_date_of_completion && (
-                      <div>
-                        <p className="text-sm text-gray-500">Actual Completion</p>
-                        <p className="text-gray-900 font-medium">{formatDate(permit.actual_date_of_completion)}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
 
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900 mb-4">Permit Details</h2>
-                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-sm text-gray-500">Type of Permit</p>
-                      <p className="text-gray-900 font-medium">{permit.type_of_permit}</p>
-                    </div>
-                    {permit.utility_provider && (
-                      <div>
-                        <p className="text-sm text-gray-500">Utility Provider</p>
-                        <p className="text-gray-900 font-medium">{permit.utility_provider}</p>
+                      <h2 className="text-lg font-semibold text-gray-900 mb-4">Permit Details</h2>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-sm text-gray-500">Type of Permit</p>
+                          <p className="text-gray-900 font-medium">{permit.type_of_permit}</p>
+                        </div>
+                        {permit.utility_provider && (
+                          <div>
+                            <p className="text-sm text-gray-500">Utility Provider</p>
+                            <p className="text-gray-900 font-medium">{permit.utility_provider}</p>
+                          </div>
+                        )}
+                        <div>
+                          <p className="text-sm text-gray-500">State</p>
+                          <p className="text-gray-900 font-medium">{permit.state}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">County/Parish</p>
+                          <p className="text-gray-900 font-medium">{permit.county_or_parish}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">City</p>
+                          <p className="text-gray-900 font-medium">{permit.city}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Property Owner</p>
+                          <p className="text-gray-900 font-medium">{permit.property_owner}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">End Customer</p>
+                          <p className="text-gray-900 font-medium">{permit.end_customer}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Project Value</p>
+                          <p className="text-gray-900 font-medium">{formatCurrency(permit.project_value)}</p>
+                        </div>
                       </div>
-                    )}
-                    <div>
-                      <p className="text-sm text-gray-500">State</p>
-                      <p className="text-gray-900 font-medium">{permit.state}</p>
                     </div>
-                    <div>
-                      <p className="text-sm text-gray-500">County/Parish</p>
-                      <p className="text-gray-900 font-medium">{permit.county_or_parish}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">City</p>
-                      <p className="text-gray-900 font-medium">{permit.city}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Property Owner</p>
-                      <p className="text-gray-900 font-medium">{permit.property_owner}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">End Customer</p>
-                      <p className="text-gray-900 font-medium">{permit.end_customer}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Project Value</p>
-                      <p className="text-gray-900 font-medium">{formatCurrency(permit.project_value)}</p>
-                    </div>
-                  </div>
-                </div>
 
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900 mb-4">Scope of Work</h2>
-                  <p className="text-gray-700 whitespace-pre-wrap">{permit.detailed_sow}</p>
-                </div>
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-900 mb-4">Scope of Work</h2>
+                      <p className="text-gray-700 whitespace-pre-wrap">{permit.detailed_sow}</p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
+                        Project Information
+                      </h2>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Requestor <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={permit.requestor}
+                            readOnly
+                            disabled
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Requester Type <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            name="requester_type"
+                            value={editFormData?.requester_type || ''}
+                            onChange={handleEditInputChange}
+                            required
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                          >
+                            <option value="">Select requester type</option>
+                            <option value="Project Manager">Project Manager</option>
+                            <option value="Construction Manager">Construction Manager</option>
+                            <option value="Division Manager">Division Manager</option>
+                            <option value="Electronic Manager">Electronic Manager</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Date of Request <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={formatDate(permit.date_of_request)}
+                            readOnly
+                            disabled
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Ontivity Project Number <span className="text-red-500">*</span>
+                          </label>
+                          <SearchableDropdown
+                            name="ontivity_project_number"
+                            value={editFormData?.ontivity_project_number || ''}
+                            onChange={(value) => setEditFormData((prev: any) => ({ ...prev, ontivity_project_number: value }))}
+                            options={jobs}
+                            placeholder="Search projects..."
+                            required
+                            loading={jobsLoading}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Performing Entity <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            name="performing_entity"
+                            value={editFormData?.performing_entity || ''}
+                            onChange={handleEditInputChange}
+                            required
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                          >
+                            <option value="">Select entity</option>
+                            <option value="ETT">ETT</option>
+                            <option value="CMS">CMS</option>
+                            <option value="ETR">ETR</option>
+                            <option value="LEG">LEG</option>
+                            <option value="MW">MW</option>
+                            <option value="ONT">ONT</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Date of Project Commencement <span className="text-red-500">*</span>
+                          </label>
+                          <DateInput
+                            name="date_of_project_commencement"
+                            value={editFormData?.date_of_project_commencement || ''}
+                            onChange={handleEditDateChange}
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Estimated Date of Completion <span className="text-red-500">*</span>
+                          </label>
+                          <DateInput
+                            name="estimated_date_of_completion"
+                            value={editFormData?.estimated_date_of_completion || ''}
+                            onChange={handleEditDateChange}
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
+                        Permit Details
+                      </h2>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Type of Permit <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            name="type_of_permit"
+                            value={editFormData?.type_of_permit || ''}
+                            onChange={handleEditInputChange}
+                            required
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                          >
+                            <option value="">Select type</option>
+                            <option value="Electrical">Electrical</option>
+                            <option value="Building">Building</option>
+                            <option value="General">General</option>
+                          </select>
+                        </div>
+
+                        {editFormData?.type_of_permit === 'Electrical' && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Utility Provider <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              name="utility_provider"
+                              value={editFormData?.utility_provider || ''}
+                              onChange={handleEditInputChange}
+                              required
+                              placeholder="e.g., Pacific Gas & Electric"
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                            />
+                          </div>
+                        )}
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            State <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            name="state"
+                            value={editFormData?.state || ''}
+                            onChange={handleEditInputChange}
+                            required
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                          >
+                            <option value="">Select state</option>
+                            {US_STATES_AND_TERRITORIES.map((state) => (
+                              <option key={state.value} value={state.label}>
+                                {state.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            County <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            name="county_or_parish"
+                            value={editFormData?.county_or_parish || ''}
+                            onChange={handleEditInputChange}
+                            required
+                            placeholder="Enter county name"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            City <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            name="city"
+                            value={editFormData?.city || ''}
+                            onChange={handleEditInputChange}
+                            required
+                            placeholder="e.g., Los Angeles"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Property Owner <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            name="property_owner"
+                            value={editFormData?.property_owner || ''}
+                            onChange={handleEditInputChange}
+                            required
+                            placeholder="e.g., SBA, CCI, ATC"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            End Customer <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            name="end_customer"
+                            value={editFormData?.end_customer || ''}
+                            onChange={handleEditInputChange}
+                            required
+                            placeholder="Customer name"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Project Value <span className="text-red-500">*</span>
+                          </label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                            <input
+                              type="number"
+                              name="project_value"
+                              value={editFormData?.project_value || ''}
+                              onChange={handleEditInputChange}
+                              required
+                              placeholder="0.00"
+                              step="0.01"
+                              className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Actual Date of Project Completion</label>
+                          <DateInput
+                            name="actual_date_of_completion"
+                            value={editFormData?.actual_date_of_completion || ''}
+                            onChange={handleEditDateChange}
+                          />
+                        </div>
+
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Detailed Scope of Work <span className="text-red-500">*</span>
+                          </label>
+                          <textarea
+                            name="detailed_sow"
+                            value={editFormData?.detailed_sow || ''}
+                            onChange={handleEditInputChange}
+                            required
+                            rows={6}
+                            placeholder="Provide detailed description of the work to be performed..."
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
 
                 {documents.length > 0 && (
                   <div>
@@ -646,22 +983,30 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                           </button>
                         </>
                       )}
-                      {permit.status === 'Rejected' && isEditMode && (
-                        <button
-                          onClick={handleResubmit}
-                          disabled={actionInProgress}
-                          className="w-full flex items-center justify-center gap-2 bg-[#0072BC] text-white px-4 py-2 rounded-lg hover:bg-[#005a94] transition-colors disabled:opacity-50"
-                        >
-                          Resubmit
-                        </button>
-                      )}
-                      {isEditMode && (
+                      {permit.status === 'Active' && isEditMode && (
                         <button
                           onClick={() => setIsEditMode(false)}
                           className="w-full flex items-center justify-center gap-2 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
                         >
-                          Cancel Edit
+                          Close Edit
                         </button>
+                      )}
+                      {permit.status === 'Rejected' && isEditMode && (
+                        <>
+                          <button
+                            onClick={handleResubmit}
+                            disabled={actionInProgress}
+                            className="w-full flex items-center justify-center gap-2 bg-[#0072BC] text-white px-4 py-2 rounded-lg hover:bg-[#005a94] transition-colors disabled:opacity-50"
+                          >
+                            Resubmit
+                          </button>
+                          <button
+                            onClick={() => setIsEditMode(false)}
+                            className="w-full flex items-center justify-center gap-2 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+                          >
+                            Cancel Edit
+                          </button>
+                        </>
                       )}
                     </div>
                   </div>
