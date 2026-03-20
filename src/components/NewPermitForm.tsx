@@ -261,10 +261,19 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
       <div className="flex-1 bg-gray-50 p-8 overflow-auto">
         <div className="max-w-4xl mx-auto">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
-            <div className="flex items-center mb-8">
-              <img src="/image_(6).png" alt="Ontivity Logo" className="h-16 w-auto" />
+            <div className="bg-gradient-to-r from-gray-50 to-blue-50 -mx-8 -mt-8 px-8 pt-8 pb-6 mb-8 border-b-4 border-[#0072BC]">
+              <div className="flex items-start justify-between mb-4">
+                <img src="/image_(6).png" alt="Ontivity Logo" className="h-16 w-auto" />
+                <div className="text-right">
+                  <p className="text-sm font-semibold text-gray-700">Date of Request</p>
+                  <p className="text-lg font-bold text-[#0072BC]">{formData.date_of_request}</p>
+                </div>
+              </div>
+              <div className="mt-4">
+                <h1 className="text-3xl font-bold text-gray-900">Permit Application Form</h1>
+                <p className="text-sm text-gray-600 mt-2">Please complete all required fields to submit your permit request</p>
+              </div>
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-6">New Permit Request</h1>
 
           <form onSubmit={handleSubmit} className="space-y-8">
             <div>
