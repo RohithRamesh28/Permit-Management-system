@@ -644,7 +644,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
 
                     <div>
                       <h2 className="text-lg font-semibold text-gray-900 mb-4">Permit Details</h2>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-3 gap-4 mb-4">
                         <div>
                           <p className="text-sm text-gray-500">Type of Permit</p>
                           <p className="text-gray-900 font-medium">{permit.type_of_permit}</p>
@@ -655,18 +655,22 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                             <p className="text-gray-900 font-medium">{permit.utility_provider}</p>
                           </div>
                         )}
+                      </div>
+                      <div className="grid grid-cols-3 gap-4 mb-4">
                         <div>
-                          <p className="text-sm text-gray-500">State</p>
-                          <p className="text-gray-900 font-medium">{permit.state}</p>
+                          <p className="text-sm text-gray-500">City</p>
+                          <p className="text-gray-900 font-medium">{permit.city}</p>
                         </div>
                         <div>
                           <p className="text-sm text-gray-500">County/Parish</p>
                           <p className="text-gray-900 font-medium">{permit.county_or_parish}</p>
                         </div>
                         <div>
-                          <p className="text-sm text-gray-500">City</p>
-                          <p className="text-gray-900 font-medium">{permit.city}</p>
+                          <p className="text-sm text-gray-500">State</p>
+                          <p className="text-gray-900 font-medium">{permit.state}</p>
                         </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-4">
                         <div>
                           <p className="text-sm text-gray-500">Property Owner</p>
                           <p className="text-gray-900 font-medium">{permit.property_owner}</p>
@@ -852,22 +856,17 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
-                            State <span className="text-red-500">*</span>
+                            City <span className="text-red-500">*</span>
                           </label>
-                          <select
-                            name="state"
-                            value={editFormData?.state || ''}
+                          <input
+                            type="text"
+                            name="city"
+                            value={editFormData?.city || ''}
                             onChange={handleEditInputChange}
                             required
+                            placeholder="e.g., Los Angeles"
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
-                          >
-                            <option value="">Select state</option>
-                            {US_STATES_AND_TERRITORIES.map((state) => (
-                              <option key={state.value} value={state.label}>
-                                {state.label}
-                              </option>
-                            ))}
-                          </select>
+                          />
                         </div>
 
                         <div>
@@ -887,22 +886,26 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
 
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
-                            City <span className="text-red-500">*</span>
+                            State <span className="text-red-500">*</span>
                           </label>
-                          <input
-                            type="text"
-                            name="city"
-                            value={editFormData?.city || ''}
+                          <select
+                            name="state"
+                            value={editFormData?.state || ''}
                             onChange={handleEditInputChange}
                             required
-                            placeholder="e.g., Los Angeles"
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
-                          />
+                          >
+                            <option value="">Select state</option>
+                            {US_STATES_AND_TERRITORIES.map((state) => (
+                              <option key={state.value} value={state.label}>
+                                {state.label}
+                              </option>
+                            ))}
+                          </select>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             Property Owner <span className="text-red-500">*</span>

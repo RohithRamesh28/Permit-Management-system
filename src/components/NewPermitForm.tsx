@@ -418,8 +418,23 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                 ) : (
                   <div></div>
                 )}
+              </div>
 
-                <div></div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    City <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="city"
+                    value={formData.city}
+                    onChange={handleInputChange}
+                    required
+                    placeholder="e.g., Los Angeles"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                  />
+                </div>
 
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -455,22 +470,9 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     ))}
                   </select>
                 </div>
+              </div>
 
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    City <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="city"
-                    value={formData.city}
-                    onChange={handleInputChange}
-                    required
-                    placeholder="e.g., Los Angeles"
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
-                  />
-                </div>
-
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
                     Property Owner <span className="text-red-500">*</span>
@@ -519,7 +521,9 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     />
                   </div>
                 </div>
+              </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Actual Date of Project Completion</label>
                   <DateInput
