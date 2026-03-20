@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { Upload, CheckCircle, FileText, X, AlertCircle } from 'lucide-react';
+import { Upload, CheckCircle, FileText, X, AlertCircle, Download } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { SignaturePad, SignaturePadRef } from './SignaturePad';
-import { generatePermitPDF, PermitFormData } from '../services/pdfGenerator';
+import { generatePermitPDF, PermitFormData, downloadPDF } from '../services/pdfGenerator';
 import { sendSubmissionNotification, sendApprovalNotification, sendRejectionNotification } from '../services/powerAutomate';
 import SearchableDropdown from './SearchableDropdown';
 import DateInput from './DateInput';
@@ -53,6 +53,8 @@ export default function PermitForm({ mode, permitId, onNavigate }: PermitFormPro
   const [actionType, setActionType] = useState<'approve' | 'reject' | null>(null);
   const signaturePadRef = useRef<SignaturePadRef>(null);
   const [existingRejectionNote, setExistingRejectionNote] = useState('');
+  const [permitIdStr, setPermitIdStr] = useState('');
+  const [signatureDataUrl, setSignatureDataUrl] = useState<string | undefined>();
 
   useEffect(() => {
     if (account) {
@@ -132,6 +134,9 @@ export default function PermitForm({ mode, permitId, onNavigate }: PermitFormPro
           requiresSignature: data.requires_signature || false,
         });
 
+        setPermitIdStr(data.permit_id || '');
+        setSignatureDataUrl(data.signature_data_url || undefined);
+
         if (mode === 'rejected') {
           const { data: auditData } = await supabase
             .from('permit_audit_log')
@@ -206,7 +211,7 @@ export default function PermitForm({ mode, permitId, onNavigate }: PermitFormPro
     setSubmitting(true);
 
     try {
-      const permitIdStr = generatePermitId();
+      const generatedPermitId = generatePermitId();
 
       const pdfData: PermitFormData = {
         projectTitle: formData.projectTitle,
@@ -222,34 +227,41 @@ export default function PermitForm({ mode, permitId, onNavigate }: PermitFormPro
         requiresSignature: formData.requiresSignature,
         signatureDataUrl: signatureDataUrl,
         submitterName: formData.requesterName,
+        permitId: generatedPermitId,
       };
 
       const pdfBlob = generatePermitPDF(pdfData);
 
+      const insertData: any = {
+        permit_id: generatedPermitId,
+        requestor: formData.requesterName,
+        requester_type: 'Internal',
+        ontivity_project_number: formData.projectTitle,
+        performing_entity: 'ONT',
+        date_of_request: new Date().toISOString().split('T')[0],
+        date_of_project_commencement: formData.dateNeeded,
+        estimated_date_of_completion: formData.expiryDate || null,
+        type_of_permit: formData.workType,
+        state: '',
+        county_or_parish: '',
+        city: formData.site,
+        property_owner: '',
+        end_customer: '',
+        project_value: 0,
+        detailed_sow: formData.workDescription,
+        status: 'Pending Approval',
+        requires_signature: formData.requiresSignature,
+      };
+
+      if (signatureDataUrl) {
+        insertData.signature_data_url = signatureDataUrl;
+        insertData.signed_by = formData.requesterName;
+        insertData.signed_at = new Date().toISOString();
+      }
+
       const { data: permitData, error: permitError } = await supabase
         .from('permits')
-        .insert([
-          {
-            permit_id: permitIdStr,
-            requestor: formData.requesterName,
-            requester_type: 'Internal',
-            ontivity_project_number: formData.projectTitle,
-            performing_entity: 'ONT',
-            date_of_request: new Date().toISOString().split('T')[0],
-            date_of_project_commencement: formData.dateNeeded,
-            estimated_date_of_completion: formData.expiryDate || null,
-            type_of_permit: formData.workType,
-            state: '',
-            county_or_parish: '',
-            city: formData.site,
-            property_owner: '',
-            end_customer: '',
-            project_value: 0,
-            detailed_sow: formData.workDescription,
-            status: 'Pending Approval',
-            requires_signature: formData.requiresSignature,
-          },
-        ])
+        .insert([insertData])
         .select()
         .single();
 
@@ -310,9 +322,55 @@ export default function PermitForm({ mode, permitId, onNavigate }: PermitFormPro
 
     setSubmitting(true);
     try {
+      const updateData: any = { status: 'Approved' };
+
+      if (signatureDataUrl) {
+        updateData.signature_data_url = signatureDataUrl;
+        updateData.signed_by = formData.requesterName;
+        updateData.signed_at = new Date().toISOString();
+
+        const pdfData: PermitFormData = {
+          projectTitle: formData.projectTitle,
+          workType: formData.workType,
+          requesterType: 'Internal',
+          requesterName: formData.requesterName,
+          requesterEmail: formData.requesterEmail,
+          site: formData.site,
+          dateNeeded: formData.dateNeeded,
+          expiryDate: formData.expiryDate,
+          workDescription: formData.workDescription,
+          safetyMeasures: formData.safetyMeasures,
+          requiresSignature: formData.requiresSignature,
+          signatureDataUrl: signatureDataUrl,
+          submitterName: formData.requesterName,
+          permitId: permitIdStr,
+          status: 'Approved',
+        };
+
+        const pdfBlob = generatePermitPDF(pdfData);
+
+        const signedPdfFilename = `${permitIdStr}-signed.pdf`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('permit-pdfs')
+          .upload(`signed/${signedPdfFilename}`, pdfBlob, {
+            contentType: 'application/pdf',
+            upsert: true,
+          });
+
+        if (uploadError) {
+          console.error('Error uploading signed PDF:', uploadError);
+        } else {
+          const { data: { publicUrl } } = supabase.storage
+            .from('permit-pdfs')
+            .getPublicUrl(`signed/${signedPdfFilename}`);
+
+          updateData.signed_pdf_url = publicUrl;
+        }
+      }
+
       const { error } = await supabase
         .from('permits')
-        .update({ status: 'Approved' })
+        .update(updateData)
         .eq('id', permitId);
 
       if (error) throw error;
@@ -388,6 +446,29 @@ export default function PermitForm({ mode, permitId, onNavigate }: PermitFormPro
     } else {
       alert('Please provide a signature.');
     }
+  };
+
+  const handleDownloadPDF = () => {
+    const pdfData: PermitFormData = {
+      projectTitle: formData.projectTitle || '',
+      workType: formData.workType || '',
+      requesterType: 'Internal',
+      requesterName: formData.requesterName || '',
+      requesterEmail: formData.requesterEmail || '',
+      site: formData.site || '',
+      dateNeeded: formData.dateNeeded || '',
+      expiryDate: formData.expiryDate || '',
+      workDescription: formData.workDescription || '',
+      safetyMeasures: formData.safetyMeasures || '',
+      requiresSignature: formData.requiresSignature,
+      signatureDataUrl: signatureDataUrl,
+      submitterName: formData.requesterName,
+      permitId: permitIdStr,
+    };
+
+    const pdfBlob = generatePermitPDF(pdfData);
+    const filename = permitIdStr ? `${permitIdStr}.pdf` : `permit-${Date.now()}.pdf`;
+    downloadPDF(pdfBlob, filename);
   };
 
   if (isLoading) {
@@ -467,13 +548,24 @@ export default function PermitForm({ mode, permitId, onNavigate }: PermitFormPro
           )}
 
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
-            <h1 className="text-2xl font-bold text-gray-900 mb-6">
-              {mode === 'submit'
-                ? 'New Permit Request'
-                : mode === 'approve'
-                ? 'Review Permit Request'
-                : 'Resubmit Rejected Permit'}
-            </h1>
+            <div className="flex items-center justify-between mb-6">
+              <h1 className="text-2xl font-bold text-gray-900">
+                {mode === 'submit'
+                  ? 'New Permit Request'
+                  : mode === 'approve'
+                  ? 'Review Permit Request'
+                  : 'Resubmit Rejected Permit'}
+              </h1>
+
+              <button
+                type="button"
+                onClick={handleDownloadPDF}
+                className="flex items-center gap-2 px-4 py-2 bg-[#0072BC] text-white rounded-lg hover:bg-[#005a94] transition-colors"
+              >
+                <Download size={18} />
+                Download PDF
+              </button>
+            </div>
 
             <form onSubmit={handleSubmit} className="space-y-8">
               <div>
