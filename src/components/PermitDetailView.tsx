@@ -146,6 +146,46 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         },
       ]);
 
+      const powerAutomateUrl = 'https://default3596b7c39b4b4ef89dde39825373af.28.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/c9bb3dc15bc34e1681cdcdda36db4cee/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=XflS1U3z0zJ8icT07Wzj8nTU2o0VIG0xnbt92ohpfZI';
+
+      const payload = {
+        timing_id: permitId,
+        unique_id: permit.permit_id,
+        submitted_by: permit.requestor,
+        submitted_by_email: permit.requester_email || '',
+        requestor: permit.requestor,
+        requester_type: permit.requester_type || '',
+        ontivity_project_number: permit.ontivity_project_number,
+        performing_entity: permit.performing_entity,
+        date_of_request: permit.date_of_request,
+        date_of_project_commencement: permit.date_of_project_commencement,
+        estimated_date_of_completion: permit.estimated_date_of_completion || '',
+        type_of_permit: permit.type_of_permit,
+        utility_provider: permit.utility_provider || '',
+        state: permit.state,
+        county_or_parish: permit.county_or_parish,
+        city: permit.city,
+        property_owner: permit.property_owner,
+        end_customer: permit.end_customer,
+        project_value: permit.project_value,
+        detailed_sow: permit.detailed_sow,
+        status: 'approved',
+        approved_by: signerName || 'System Admin',
+        approved_at: new Date().toISOString(),
+      };
+
+      try {
+        await fetch(powerAutomateUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+      } catch (flowError) {
+        console.error('Error sending to Power Automate:', flowError);
+      }
+
       setShowSignatureModal(false);
       signaturePadRef.current?.clear();
       setSignerName('');
@@ -193,6 +233,47 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
           notes: rejectionNotes,
         },
       ]);
+
+      const powerAutomateUrl = 'https://default3596b7c39b4b4ef89dde39825373af.28.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/c9bb3dc15bc34e1681cdcdda36db4cee/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=XflS1U3z0zJ8icT07Wzj8nTU2o0VIG0xnbt92ohpfZI';
+
+      const payload = {
+        timing_id: permitId,
+        unique_id: permit.permit_id,
+        submitted_by: permit.requestor,
+        submitted_by_email: permit.requester_email || '',
+        requestor: permit.requestor,
+        requester_type: permit.requester_type || '',
+        ontivity_project_number: permit.ontivity_project_number,
+        performing_entity: permit.performing_entity,
+        date_of_request: permit.date_of_request,
+        date_of_project_commencement: permit.date_of_project_commencement,
+        estimated_date_of_completion: permit.estimated_date_of_completion || '',
+        type_of_permit: permit.type_of_permit,
+        utility_provider: permit.utility_provider || '',
+        state: permit.state,
+        county_or_parish: permit.county_or_parish,
+        city: permit.city,
+        property_owner: permit.property_owner,
+        end_customer: permit.end_customer,
+        project_value: permit.project_value,
+        detailed_sow: permit.detailed_sow,
+        status: 'rejected',
+        rejection_reason: rejectionNotes,
+        rejected_by: signerName || 'System Admin',
+        rejected_at: new Date().toISOString(),
+      };
+
+      try {
+        await fetch(powerAutomateUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+      } catch (flowError) {
+        console.error('Error sending to Power Automate:', flowError);
+      }
 
       setShowRejectModal(false);
       setShowSignatureModal(false);
@@ -261,6 +342,46 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
           notes: 'Permit resubmitted for approval',
         },
       ]);
+
+      const powerAutomateUrl = 'https://default3596b7c39b4b4ef89dde39825373af.28.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/c9bb3dc15bc34e1681cdcdda36db4cee/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=XflS1U3z0zJ8icT07Wzj8nTU2o0VIG0xnbt92ohpfZI';
+
+      const payload = {
+        timing_id: permitId,
+        unique_id: permit.permit_id,
+        submitted_by: permit.requestor,
+        submitted_by_email: permit.requester_email || '',
+        requestor: permit.requestor,
+        requester_type: permit.requester_type || '',
+        ontivity_project_number: permit.ontivity_project_number,
+        performing_entity: permit.performing_entity,
+        date_of_request: permit.date_of_request,
+        date_of_project_commencement: permit.date_of_project_commencement,
+        estimated_date_of_completion: permit.estimated_date_of_completion || '',
+        type_of_permit: permit.type_of_permit,
+        utility_provider: permit.utility_provider || '',
+        state: permit.state,
+        county_or_parish: permit.county_or_parish,
+        city: permit.city,
+        property_owner: permit.property_owner,
+        end_customer: permit.end_customer,
+        project_value: permit.project_value,
+        detailed_sow: permit.detailed_sow,
+        status: 'resubmitted',
+        resubmitted_by: permit.requestor,
+        resubmitted_at: new Date().toISOString(),
+      };
+
+      try {
+        await fetch(powerAutomateUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+      } catch (flowError) {
+        console.error('Error sending to Power Automate:', flowError);
+      }
 
       await fetchPermitDetails();
     } catch (error) {

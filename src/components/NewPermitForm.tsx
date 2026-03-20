@@ -206,7 +206,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
         project_value: parseInt(formData.project_value) || 0,
         actual_date_of_completion: formData.actual_date_of_completion || '',
         detailed_sow: formData.detailed_sow,
-        status: 'Pending Approval',
+        status: 'awaiting approval',
         requires_signature: requiresSignature,
         uploaded_files_count: fileUrls.length,
         uploaded_files: fileUrls,
