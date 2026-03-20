@@ -1,19 +1,26 @@
 import { jsPDF } from 'jspdf';
 
 export interface PermitFormData {
-  projectTitle: string;
-  workType: string;
-  requesterType: string;
-  requesterName: string;
-  requesterEmail: string;
-  site: string;
-  dateNeeded: string;
-  expiryDate: string;
-  workDescription: string;
-  safetyMeasures: string;
+  requestor: string;
+  requester_type: string;
+  requester_email?: string;
+  date_of_request: string;
+  ontivity_project_number: string;
+  performing_entity: string;
+  date_of_project_commencement: string;
+  estimated_date_of_completion: string;
+  type_of_permit: string;
+  utility_provider?: string;
+  state: string;
+  county_or_parish: string;
+  city: string;
+  property_owner: string;
+  end_customer: string;
+  project_value: string;
+  actual_date_of_completion?: string;
+  detailed_sow: string;
   requiresSignature: boolean;
   signatureDataUrl?: string;
-  submitterName?: string;
   permitId?: string;
   status?: string;
 }
@@ -151,36 +158,62 @@ export const generatePermitPDF = (formData: PermitFormData): Blob => {
   yPos = addSectionHeader('REQUESTER INFORMATION', yPos);
   yPos += 1;
 
-  const col1Width = contentWidth / 2 - 1;
-  const col2X = margin + col1Width + 2;
+  const col1Width = contentWidth / 3 - 1;
+  const col2X = margin + col1Width + 1.5;
+  const col3X = margin + (col1Width * 2) + 3;
 
-  let tempY = addField('Requester Name', formData.requesterName, margin, yPos, col1Width);
-  addField('Requester Email', formData.requesterEmail, col2X, yPos, col1Width);
-  yPos = tempY + 2;
+  let tempY = addField('Requestor', formData.requestor, margin, yPos, col1Width);
+  let tempY2 = addField('Requester Type', formData.requester_type, col2X, yPos, col1Width);
+  addField('Date of Request', formData.date_of_request, col3X, yPos, col1Width);
+  yPos = Math.max(tempY, tempY2) + 2;
 
-  yPos = addSectionHeader('PROJECT DETAILS', yPos);
+  if (formData.requester_email) {
+    yPos = addField('Requester Email', formData.requester_email, margin, yPos, contentWidth);
+    yPos += 2;
+  }
+
+  yPos = addSectionHeader('PROJECT INFORMATION', yPos);
   yPos += 1;
 
-  tempY = addField('Project Title / Job Number', formData.projectTitle, margin, yPos, col1Width);
-  addField('Work Type', formData.workType, col2X, yPos, col1Width);
-  yPos = tempY + 2;
+  tempY = addField('Ontivity Project Number', formData.ontivity_project_number, margin, yPos, col1Width);
+  tempY2 = addField('Performing Entity', formData.performing_entity, col2X, yPos, col1Width);
+  addField('Type of Permit', formData.type_of_permit, col3X, yPos, col1Width);
+  yPos = Math.max(tempY, tempY2) + 2;
 
-  tempY = addField('Site Location', formData.site, margin, yPos, col1Width);
-  addField('Requester Type', formData.requesterType || 'Internal', col2X, yPos, col1Width);
-  yPos = tempY + 2;
+  if (formData.utility_provider && formData.type_of_permit === 'Electrical') {
+    yPos = addField('Utility Provider', formData.utility_provider, margin, yPos, contentWidth);
+    yPos += 2;
+  }
 
-  tempY = addField('Date Needed', formData.dateNeeded, margin, yPos, col1Width);
-  addField('Expiry Date', formData.expiryDate || 'N/A', col2X, yPos, col1Width);
-  yPos = tempY + 2;
-
-  yPos = addSectionHeader('WORK DESCRIPTION', yPos);
+  yPos = addSectionHeader('PROJECT DATES', yPos);
   yPos += 1;
-  yPos = addTextArea('Detailed Scope of Work', formData.workDescription, margin, yPos, contentWidth);
-  yPos += 2;
 
-  yPos = addSectionHeader('SAFETY MEASURES', yPos);
+  tempY = addField('Date of Project Commencement', formData.date_of_project_commencement, margin, yPos, col1Width);
+  tempY2 = addField('Estimated Date of Completion', formData.estimated_date_of_completion, col2X, yPos, col1Width);
+  if (formData.actual_date_of_completion) {
+    addField('Actual Date of Completion', formData.actual_date_of_completion, col3X, yPos, col1Width);
+  }
+  yPos = Math.max(tempY, tempY2) + 2;
+
+  yPos = addSectionHeader('LOCATION INFORMATION', yPos);
   yPos += 1;
-  yPos = addTextArea('Safety Precautions & Requirements', formData.safetyMeasures, margin, yPos, contentWidth);
+
+  tempY = addField('State', formData.state, margin, yPos, col1Width);
+  tempY2 = addField('County', formData.county_or_parish, col2X, yPos, col1Width);
+  addField('City', formData.city, col3X, yPos, col1Width);
+  yPos = Math.max(tempY, tempY2) + 2;
+
+  yPos = addSectionHeader('PROJECT STAKEHOLDERS', yPos);
+  yPos += 1;
+
+  tempY = addField('Property Owner', formData.property_owner, margin, yPos, col1Width);
+  tempY2 = addField('End Customer', formData.end_customer, col2X, yPos, col1Width);
+  addField('Project Value', `$${formData.project_value}`, col3X, yPos, col1Width);
+  yPos = Math.max(tempY, tempY2) + 2;
+
+  yPos = addSectionHeader('DETAILED SCOPE OF WORK', yPos);
+  yPos += 1;
+  yPos = addTextArea('Work Description', formData.detailed_sow, margin, yPos, contentWidth);
   yPos += 4;
 
   if (formData.requiresSignature && formData.signatureDataUrl) {
@@ -207,7 +240,7 @@ export const generatePermitPDF = (formData: PermitFormData): Blob => {
     doc.setTextColor(DARK_GRAY);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Signed by: ${formData.submitterName || formData.requesterName}`, margin + 70, yPos + 32);
+    doc.text(`Signed by: ${formData.requestor}`, margin + 70, yPos + 32);
 
     doc.line(margin + 125, yPos + 28, pageWidth - margin, yPos + 28);
     doc.text(`Date: ${new Date().toLocaleDateString()}`, margin + 125, yPos + 32);
