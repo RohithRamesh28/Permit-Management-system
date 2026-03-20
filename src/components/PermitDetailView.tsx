@@ -542,7 +542,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
           <img src="/image_(6).png" alt="Ontivity Logo" className="h-16 w-auto" />
           <div className="flex items-center gap-3">
             <button
-              onClick={() => onNavigate('submit')}
+              onClick={() => onNavigate('new')}
               className="flex items-center gap-2 px-4 py-2 bg-[#0072BC] text-white rounded-lg hover:bg-[#005a94] transition-colors"
             >
               <PlusCircle size={18} />

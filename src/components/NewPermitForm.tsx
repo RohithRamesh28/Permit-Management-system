@@ -390,29 +390,26 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                   </select>
                 </div>
 
-                <div></div>
-                <div></div>
-
-                {formData.type_of_permit === 'Electrical' && (
-                  <>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                        Utility Provider <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        name="utility_provider"
-                        value={formData.utility_provider}
-                        onChange={handleInputChange}
-                        required
-                        placeholder="e.g., Pacific Gas & Electric"
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
-                      />
-                    </div>
-                    <div></div>
-                    <div></div>
-                  </>
+                {formData.type_of_permit === 'Electrical' ? (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Utility Provider <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="utility_provider"
+                      value={formData.utility_provider}
+                      onChange={handleInputChange}
+                      required
+                      placeholder="e.g., Pacific Gas & Electric"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                    />
+                  </div>
+                ) : (
+                  <div></div>
                 )}
+
+                <div></div>
 
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
