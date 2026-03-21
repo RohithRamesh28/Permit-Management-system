@@ -644,44 +644,46 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
 
                     <div>
                       <h2 className="text-lg font-semibold text-gray-900 mb-4">Permit Details</h2>
-                      <div className="grid grid-cols-3 gap-4 mb-4">
-                        <div>
-                          <p className="text-sm text-gray-500">Type of Permit</p>
-                          <p className="text-gray-900 font-medium">{permit.type_of_permit}</p>
-                        </div>
-                        {permit.utility_provider && (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-3 gap-4">
                           <div>
-                            <p className="text-sm text-gray-500">Utility Provider</p>
-                            <p className="text-gray-900 font-medium">{permit.utility_provider}</p>
+                            <p className="text-sm text-gray-500">Type of Permit</p>
+                            <p className="text-gray-900 font-medium">{permit.type_of_permit}</p>
                           </div>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-3 gap-4 mb-4">
-                        <div>
-                          <p className="text-sm text-gray-500">City</p>
-                          <p className="text-gray-900 font-medium">{permit.city}</p>
+                          {permit.utility_provider && (
+                            <div>
+                              <p className="text-sm text-gray-500">Utility Provider</p>
+                              <p className="text-gray-900 font-medium">{permit.utility_provider}</p>
+                            </div>
+                          )}
                         </div>
-                        <div>
-                          <p className="text-sm text-gray-500">County/Parish</p>
-                          <p className="text-gray-900 font-medium">{permit.county_or_parish}</p>
+                        <div className="grid grid-cols-3 gap-4">
+                          <div>
+                            <p className="text-sm text-gray-500">City</p>
+                            <p className="text-gray-900 font-medium">{permit.city}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-500">County/Parish</p>
+                            <p className="text-gray-900 font-medium">{permit.county_or_parish}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-500">State</p>
+                            <p className="text-gray-900 font-medium">{permit.state}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm text-gray-500">State</p>
-                          <p className="text-gray-900 font-medium">{permit.state}</p>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-3 gap-4">
-                        <div>
-                          <p className="text-sm text-gray-500">Property Owner</p>
-                          <p className="text-gray-900 font-medium">{permit.property_owner}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-500">End Customer</p>
-                          <p className="text-gray-900 font-medium">{permit.end_customer}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-500">Project Value</p>
-                          <p className="text-gray-900 font-medium">{formatCurrency(permit.project_value)}</p>
+                        <div className="grid grid-cols-3 gap-4">
+                          <div>
+                            <p className="text-sm text-gray-500">Property Owner</p>
+                            <p className="text-gray-900 font-medium">{permit.property_owner}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-500">End Customer</p>
+                            <p className="text-gray-900 font-medium">{permit.end_customer}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-500">Project Value</p>
+                            <p className="text-gray-900 font-medium">{formatCurrency(permit.project_value)}</p>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -853,131 +855,135 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                         )}
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            City <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            name="city"
-                            value={editFormData?.city || ''}
-                            onChange={handleEditInputChange}
-                            required
-                            placeholder="e.g., Los Angeles"
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            County <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            name="county_or_parish"
-                            value={editFormData?.county_or_parish || ''}
-                            onChange={handleEditInputChange}
-                            required
-                            placeholder="Enter county name"
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            State <span className="text-red-500">*</span>
-                          </label>
-                          <select
-                            name="state"
-                            value={editFormData?.state || ''}
-                            onChange={handleEditInputChange}
-                            required
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
-                          >
-                            <option value="">Select state</option>
-                            {US_STATES_AND_TERRITORIES.map((state) => (
-                              <option key={state.value} value={state.label}>
-                                {state.label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Property Owner <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            name="property_owner"
-                            value={editFormData?.property_owner || ''}
-                            onChange={handleEditInputChange}
-                            required
-                            placeholder="e.g., SBA, CCI, ATC"
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            End Customer <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            name="end_customer"
-                            value={editFormData?.end_customer || ''}
-                            onChange={handleEditInputChange}
-                            required
-                            placeholder="Customer name"
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Project Value <span className="text-red-500">*</span>
-                          </label>
-                          <div className="relative">
-                            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                      <div className="space-y-4 mt-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              City <span className="text-red-500">*</span>
+                            </label>
                             <input
-                              type="number"
-                              name="project_value"
-                              value={editFormData?.project_value || ''}
+                              type="text"
+                              name="city"
+                              value={editFormData?.city || ''}
                               onChange={handleEditInputChange}
                               required
-                              placeholder="0.00"
-                              step="0.01"
-                              className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                              placeholder="e.g., Los Angeles"
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
                             />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              County <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              name="county_or_parish"
+                              value={editFormData?.county_or_parish || ''}
+                              onChange={handleEditInputChange}
+                              required
+                              placeholder="Enter county name"
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              State <span className="text-red-500">*</span>
+                            </label>
+                            <select
+                              name="state"
+                              value={editFormData?.state || ''}
+                              onChange={handleEditInputChange}
+                              required
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                            >
+                              <option value="">Select state</option>
+                              {US_STATES_AND_TERRITORIES.map((state) => (
+                                <option key={state.value} value={state.label}>
+                                  {state.label}
+                                </option>
+                              ))}
+                            </select>
                           </div>
                         </div>
 
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Actual Date of Project Completion</label>
-                          <DateInput
-                            name="actual_date_of_completion"
-                            value={editFormData?.actual_date_of_completion || ''}
-                            onChange={handleEditDateChange}
-                          />
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Property Owner <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              name="property_owner"
+                              value={editFormData?.property_owner || ''}
+                              onChange={handleEditInputChange}
+                              required
+                              placeholder="e.g., SBA, CCI, ATC"
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              End Customer <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              name="end_customer"
+                              value={editFormData?.end_customer || ''}
+                              onChange={handleEditInputChange}
+                              required
+                              placeholder="Customer name"
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Project Value <span className="text-red-500">*</span>
+                            </label>
+                            <div className="relative">
+                              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                              <input
+                                type="number"
+                                name="project_value"
+                                value={editFormData?.project_value || ''}
+                                onChange={handleEditInputChange}
+                                required
+                                placeholder="0.00"
+                                step="0.01"
+                                className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                              />
+                            </div>
+                          </div>
                         </div>
 
-                        <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Detailed Scope of Work <span className="text-red-500">*</span>
-                          </label>
-                          <textarea
-                            name="detailed_sow"
-                            value={editFormData?.detailed_sow || ''}
-                            onChange={handleEditInputChange}
-                            required
-                            rows={6}
-                            placeholder="Provide detailed description of the work to be performed..."
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
-                          />
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Actual Date of Project Completion</label>
+                            <DateInput
+                              name="actual_date_of_completion"
+                              value={editFormData?.actual_date_of_completion || ''}
+                              onChange={handleEditDateChange}
+                            />
+                          </div>
                         </div>
+                      </div>
+
+                      <div className="mt-6">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Detailed Scope of Work <span className="text-red-500">*</span>
+                        </label>
+                        <textarea
+                          name="detailed_sow"
+                          value={editFormData?.detailed_sow || ''}
+                          onChange={handleEditInputChange}
+                          required
+                          rows={6}
+                          placeholder="Provide detailed description of the work to be performed..."
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                        />
                       </div>
                     </div>
                   </>

@@ -420,120 +420,124 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    City <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="city"
-                    value={formData.city}
-                    onChange={handleInputChange}
-                    required
-                    placeholder="e.g., Los Angeles"
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    County <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="county_or_parish"
-                    value={formData.county_or_parish}
-                    onChange={handleInputChange}
-                    required
-                    placeholder="Enter county name"
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    State <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    name="state"
-                    value={formData.state}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
-                  >
-                    <option value="">Select state</option>
-                    {US_STATES_AND_TERRITORIES.map((state) => (
-                      <option key={state.value} value={state.label}>
-                        {state.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Property Owner <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="property_owner"
-                    value={formData.property_owner}
-                    onChange={handleInputChange}
-                    required
-                    placeholder="e.g., SBA, CCI, ATC"
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    End Customer <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="end_customer"
-                    value={formData.end_customer}
-                    onChange={handleInputChange}
-                    required
-                    placeholder="Customer name"
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Project Value <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">$</span>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      City <span className="text-red-500">*</span>
+                    </label>
                     <input
-                      type="number"
-                      name="project_value"
-                      value={formData.project_value}
+                      type="text"
+                      name="city"
+                      value={formData.city}
                       onChange={handleInputChange}
                       required
-                      placeholder="0.00"
-                      step="0.01"
-                      className="w-full pl-6 pr-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                      placeholder="e.g., Los Angeles"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
                     />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      County <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="county_or_parish"
+                      value={formData.county_or_parish}
+                      onChange={handleInputChange}
+                      required
+                      placeholder="Enter county name"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      State <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      name="state"
+                      value={formData.state}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                    >
+                      <option value="">Select state</option>
+                      {US_STATES_AND_TERRITORIES.map((state) => (
+                        <option key={state.value} value={state.label}>
+                          {state.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Property Owner <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="property_owner"
+                      value={formData.property_owner}
+                      onChange={handleInputChange}
+                      required
+                      placeholder="e.g., SBA, CCI, ATC"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      End Customer <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="end_customer"
+                      value={formData.end_customer}
+                      onChange={handleInputChange}
+                      required
+                      placeholder="Customer name"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Project Value <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">$</span>
+                      <input
+                        type="number"
+                        name="project_value"
+                        value={formData.project_value}
+                        onChange={handleInputChange}
+                        required
+                        placeholder="0.00"
+                        step="0.01"
+                        className="w-full pl-6 pr-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Actual Date of Project Completion</label>
+                    <DateInput
+                      name="actual_date_of_completion"
+                      value={formData.actual_date_of_completion}
+                      onChange={handleDateChange}
+                    />
+                    <p className="text-[10px] text-gray-500 mt-0.5">Optional - Fill in when project is completed</p>
                   </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Actual Date of Project Completion</label>
-                  <DateInput
-                    name="actual_date_of_completion"
-                    value={formData.actual_date_of_completion}
-                    onChange={handleDateChange}
-                  />
-                  <p className="text-[10px] text-gray-500 mt-0.5">Optional - Fill in when project is completed</p>
-                </div>
-
                 <div className="md:col-span-3">
                   <label className="block text-xs font-medium text-gray-700 mb-1">
                     Detailed Scope of Work <span className="text-red-500">*</span>
