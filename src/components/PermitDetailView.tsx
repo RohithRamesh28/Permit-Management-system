@@ -124,47 +124,55 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         updateData.signature_image_url = signatureData;
         updateData.signed_by = signerName;
         updateData.signed_at = new Date().toISOString();
+      }
 
-        const pdfBlob = generatePermitPDF({
-          requestor: permit.requestor || '',
-          requester_type: permit.requester_type || '',
-          requester_email: permit.requester_email || '',
-          date_of_request: permit.date_of_request || '',
-          ontivity_project_number: permit.ontivity_project_number || '',
-          performing_entity: permit.performing_entity || '',
-          date_of_project_commencement: permit.date_of_project_commencement || '',
-          estimated_date_of_completion: permit.estimated_date_of_completion?.toString() || '',
-          type_of_permit: permit.type_of_permit || '',
-          utility_provider: permit.utility_provider || '',
-          state: permit.state || '',
-          county_or_parish: permit.county_or_parish || '',
-          city: permit.city || '',
-          property_owner: permit.property_owner || '',
-          end_customer: permit.end_customer || '',
-          project_value: permit.project_value?.toString() || '0',
-          actual_date_of_completion: permit.actual_date_of_completion || '',
-          detailed_sow: permit.detailed_sow || '',
-          requiresSignature: true,
-          signatureDataUrl: signatureData,
+      const approvalDate = new Date().toLocaleDateString();
+      const approverName = signerName || 'System Admin';
+
+      const pdfBlob = generatePermitPDF({
+        requestor: permit.requestor || '',
+        requester_type: permit.requester_type || '',
+        requester_email: permit.requester_email || '',
+        date_of_request: permit.date_of_request || '',
+        ontivity_project_number: permit.ontivity_project_number || '',
+        performing_entity: permit.performing_entity || '',
+        date_of_project_commencement: permit.date_of_project_commencement || '',
+        estimated_date_of_completion: permit.estimated_date_of_completion?.toString() || '',
+        type_of_permit: permit.type_of_permit || '',
+        utility_provider: permit.utility_provider || '',
+        state: permit.state || '',
+        county_or_parish: permit.county_or_parish || '',
+        city: permit.city || '',
+        property_owner: permit.property_owner || '',
+        end_customer: permit.end_customer || '',
+        project_value: permit.project_value?.toString() || '0',
+        actual_date_of_completion: permit.actual_date_of_completion || '',
+        detailed_sow: permit.detailed_sow || '',
+        requiresSignature: permit.requires_signature || false,
+        signatureDataUrl: signatureData,
+        permitId: permit.permit_id,
+        status: 'Approved',
+        signerName: signatureData ? signerName : undefined,
+        approvedBy: approverName,
+        approvedAt: approvalDate,
+      });
+
+      const fileName = `permit_${permit.permit_id}_approved_${Date.now()}.pdf`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('permit-pdfs')
+        .upload(fileName, pdfBlob, {
+          contentType: 'application/pdf',
+          upsert: false,
         });
 
-        const fileName = `permit_${permit.permit_id}_signed_${Date.now()}.pdf`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('permit-pdfs')
-          .upload(fileName, pdfBlob, {
-            contentType: 'application/pdf',
-            upsert: false,
-          });
+      if (uploadError) throw uploadError;
 
-        if (uploadError) throw uploadError;
+      const { data: { publicUrl } } = supabase.storage
+        .from('permit-pdfs')
+        .getPublicUrl(fileName);
 
-        const { data: { publicUrl } } = supabase.storage
-          .from('permit-pdfs')
-          .getPublicUrl(fileName);
-
-        pdfUrl = publicUrl;
-        updateData.signed_pdf_url = pdfUrl;
-      }
+      pdfUrl = publicUrl;
+      updateData.signed_pdf_url = pdfUrl;
 
       const { error: updateError } = await supabase
         .from('permits')
@@ -206,8 +214,9 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         project_value: permit.project_value,
         detailed_sow: permit.detailed_sow,
         status: 'approved',
-        approved_by: signerName || 'System Admin',
+        approved_by: approverName,
         approved_at: new Date().toISOString(),
+        pdf_url: pdfUrl || '',
       };
 
       try {
@@ -483,6 +492,9 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
       signatureDataUrl: permit.signature_image_url,
       permitId: permit.permit_id,
       status: permit.status,
+      signerName: permit.signed_by || undefined,
+      approvedBy: permit.status === 'Active' ? (permit.signed_by || 'System Admin') : undefined,
+      approvedAt: permit.status === 'Active' && permit.signed_at ? formatDate(permit.signed_at) : undefined,
     });
 
     const filename = `${permit.permit_id}.pdf`;

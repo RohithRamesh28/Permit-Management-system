@@ -23,6 +23,9 @@ export interface PermitFormData {
   signatureDataUrl?: string;
   permitId?: string;
   status?: string;
+  signerName?: string;
+  approvedBy?: string;
+  approvedAt?: string;
 }
 
 const ONTIVITY_BLUE = '#0072BC';
@@ -38,24 +41,32 @@ export const generatePermitPDF = (formData: PermitFormData): Blob => {
   const contentWidth = pageWidth - (margin * 2);
 
   const addHeader = () => {
+    doc.setFillColor(243, 244, 246);
+    doc.rect(0, 0, pageWidth, 20, 'F');
+
+    doc.setFillColor(239, 246, 255);
+    doc.rect(pageWidth / 2, 0, pageWidth / 2, 20, 'F');
+
     doc.setFillColor(ONTIVITY_BLUE);
-    doc.rect(0, 0, pageWidth, 35, 'F');
+    doc.rect(0, 20, pageWidth, 4, 'F');
 
     try {
       const logoImg = new Image();
       logoImg.src = '/image_(6).png';
-      doc.addImage(logoImg, 'PNG', margin, 8, 50, 18);
+      doc.addImage(logoImg, 'PNG', margin, 4, 40, 12);
     } catch (error) {
       console.error('Error loading logo:', error);
     }
 
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(18);
+    doc.setTextColor(100, 100, 100);
+    doc.setFontSize(7);
     doc.setFont('helvetica', 'bold');
-    doc.text('PERMIT TO WORK', pageWidth - margin, 20, { align: 'right' });
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Request Form', pageWidth - margin, 27, { align: 'right' });
+    doc.text('DATE OF REQUEST', pageWidth - margin, 8, { align: 'right' });
+
+    doc.setTextColor(DARK_GRAY);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text(formData.date_of_request, pageWidth - margin, 14, { align: 'right' });
   };
 
   const addFooter = () => {
@@ -129,7 +140,7 @@ export const generatePermitPDF = (formData: PermitFormData): Blob => {
 
   addHeader();
 
-  let yPos = 42;
+  let yPos = 30;
 
   if (formData.permitId || formData.status) {
     const infoBoxY = yPos;
@@ -224,12 +235,12 @@ export const generatePermitPDF = (formData: PermitFormData): Blob => {
     doc.setTextColor(DARK_GRAY);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Signed by: ${formData.requestor}`, margin + 4, yPos + 22);
+    doc.text(`Signed by: ${formData.signerName || formData.requestor}`, margin + 4, yPos + 22);
 
     doc.setDrawColor(BORDER_GRAY);
     doc.setLineWidth(0.5);
     doc.line(margin + 90, yPos + 18, pageWidth - margin - 4, yPos + 18);
-    doc.text(`Date: ${new Date().toLocaleDateString()}`, margin + 90, yPos + 22);
+    doc.text(new Date().toLocaleDateString(), margin + 90, yPos + 22);
 
     yPos += 35;
   } else if (formData.requiresSignature) {
@@ -250,6 +261,33 @@ export const generatePermitPDF = (formData: PermitFormData): Blob => {
 
     doc.line(margin + 90, yPos + 18, pageWidth - margin - 4, yPos + 18);
     doc.text('Date', margin + 90, yPos + 22);
+  } else if (formData.status === 'Approved' && !formData.requiresSignature) {
+    yPos = addSectionHeader('APPROVAL STATUS', yPos);
+    yPos += 2;
+
+    const approvalBoxHeight = 25;
+    doc.setFillColor(240, 253, 244);
+    doc.rect(margin, yPos, contentWidth, approvalBoxHeight, 'F');
+    drawBox(margin, yPos, contentWidth, approvalBoxHeight);
+
+    doc.setTextColor('#059669');
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('APPROVED', margin + 2, yPos + 8);
+
+    doc.setTextColor(DARK_GRAY);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+
+    if (formData.approvedBy) {
+      doc.text(`Approved by: ${formData.approvedBy}`, margin + 2, yPos + 15);
+    }
+
+    if (formData.approvedAt) {
+      doc.text(`Approval Date: ${formData.approvedAt}`, margin + 2, yPos + 21);
+    }
+
+    yPos += approvalBoxHeight;
   }
 
   addFooter();
