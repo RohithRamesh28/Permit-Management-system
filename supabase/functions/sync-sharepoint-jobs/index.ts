@@ -39,6 +39,7 @@ async function getAppOnlyToken(
 interface SharePointItem {
   id: string;
   title: string;
+  allFields: Record<string, any>;
 }
 
 async function fetchAllSharePointItems(
@@ -82,7 +83,7 @@ async function fetchAllSharePointItems(
 
   const allItems: SharePointItem[] = [];
   let nextLink: string | null =
-    `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${listId}/items?$expand=fields($select=Title)&$top=999`;
+    `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${listId}/items?$expand=fields&$top=999`;
 
   while (nextLink) {
     const itemsResponse = await fetch(nextLink, {
@@ -103,6 +104,7 @@ async function fetchAllSharePointItems(
         allItems.push({
           id: item.id,
           title: item.fields.Title,
+          allFields: item.fields || {},
         });
       }
     }
@@ -151,21 +153,22 @@ Deno.serve(async (req: Request) => {
       listName
     );
 
-    const uniqueItemsMap = new Map<string, string>();
+    const uniqueItemsMap = new Map<string, SharePointItem>();
     for (const item of items) {
-      uniqueItemsMap.set(item.id, item.title);
+      uniqueItemsMap.set(item.id, item);
     }
 
     const now = new Date().toISOString();
 
     if (uniqueItemsMap.size > 0) {
       const batchSize = 500;
-      const entries = Array.from(uniqueItemsMap.entries());
+      const entries = Array.from(uniqueItemsMap.values());
 
       for (let i = 0; i < entries.length; i += batchSize) {
-        const batch = entries.slice(i, i + batchSize).map(([id, title]) => ({
-          sharepoint_id: id,
-          job_title: title,
+        const batch = entries.slice(i, i + batchSize).map((item) => ({
+          sharepoint_id: item.id,
+          job_title: item.title,
+          all_fields: item.allFields,
           last_synced_at: now,
           updated_at: now,
         }));
