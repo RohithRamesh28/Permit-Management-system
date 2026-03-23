@@ -8,6 +8,7 @@ import SearchableDropdown from './SearchableDropdown';
 import { useSharePointJobs } from '../hooks/useSharePointJobs';
 import { US_STATES_AND_TERRITORIES } from '../utils/usStates';
 import DateInput from './DateInput';
+import { useAuth } from '../contexts/AuthContext';
 
 interface PermitDetailViewProps {
   permitId: string;
@@ -34,6 +35,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
   const [showResubmitConfirmModal, setShowResubmitConfirmModal] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const { userName } = useAuth();
 
   useEffect(() => {
     fetchPermitDetails();
@@ -127,7 +129,8 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
       }
 
       const approvalDate = new Date().toLocaleDateString();
-      const approverName = signerName || 'System Admin';
+      const approverName = signatureData ? signerName : (userName || 'System Admin');
+      updateData.approved_by = approverName;
 
       const pdfBlob = generatePermitPDF({
         requestor: permit.requestor || '',
@@ -150,7 +153,6 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         detailed_sow: permit.detailed_sow || '',
         requiresSignature: permit.requires_signature || false,
         signatureDataUrl: signatureData,
-        permitId: permit.permit_id,
         status: 'Approved',
         signerName: signatureData ? signerName : undefined,
         approvedBy: approverName,
@@ -185,7 +187,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         {
           permit_id: permitId,
           action: 'Approved',
-          performed_by: signerName || 'System Admin',
+          performed_by: approverName,
           notes: signatureData ? 'Permit approved and activated with signature' : 'Permit approved and activated',
         },
       ]);
@@ -490,14 +492,13 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
       detailed_sow: permit.detailed_sow || '',
       requiresSignature: permit.requires_signature || false,
       signatureDataUrl: permit.signature_image_url,
-      permitId: permit.permit_id,
       status: permit.status,
       signerName: permit.signed_by || undefined,
-      approvedBy: permit.status === 'Active' ? (permit.signed_by || 'System Admin') : undefined,
+      approvedBy: permit.status === 'Active' ? (permit.approved_by || permit.signed_by || 'System Admin') : undefined,
       approvedAt: permit.status === 'Active' && permit.signed_at ? formatDate(permit.signed_at) : undefined,
     });
 
-    const filename = `${permit.permit_id}.pdf`;
+    const filename = `PERMIT-${permit.ontivity_project_number}.pdf`;
     downloadPDF(pdfBlob, filename);
   };
 
@@ -599,7 +600,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
           <div className="p-6 border-b border-gray-200 flex justify-between items-start">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">{permit.permit_id}</h1>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">PERMIT-{permit.ontivity_project_number}</h1>
               <p className="text-gray-600">Project: {permit.ontivity_project_number}</p>
               {readOnlyMode && (
                 <p className="text-sm text-green-600 mt-2 font-medium">Form sent to SharePoint</p>
@@ -609,7 +610,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
               <span className={`px-4 py-2 rounded-full text-sm font-medium ${getStatusBadgeClass(permit.status)}`}>
                 {permit.status}
               </span>
-              {!readOnlyMode && (permit.status === 'Active' || (permit.status === 'Rejected' && !isEditMode) || (permit.status === 'Pending Approval' && permit.rejection_notes && !isEditMode)) && (
+              {!readOnlyMode && ((permit.status === 'Rejected' && !isEditMode) || (permit.status === 'Pending Approval' && permit.rejection_notes && !isEditMode)) && (
                 <button
                   onClick={() => setIsEditMode(true)}
                   className="flex items-center gap-2 px-4 py-2 bg-[#0072BC] text-white rounded-lg hover:bg-[#005a94] transition-colors"
@@ -1094,14 +1095,6 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                             Cancel
                           </button>
                         </>
-                      )}
-                      {permit.status === 'Active' && isEditMode && (
-                        <button
-                          onClick={() => setIsEditMode(false)}
-                          className="w-full flex items-center justify-center gap-2 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
-                        >
-                          Close Edit
-                        </button>
                       )}
                       {permit.status === 'Rejected' && isEditMode && (
                         <>

@@ -114,7 +114,7 @@ export const generatePermitPDF = (formData: PermitFormData): Blob => {
     const lines = doc.splitTextToSize(value || 'N/A', width - 4);
     doc.text(lines, x + 2, y + 8);
 
-    const fieldHeight = Math.max(10, lines.length * 5 + 6);
+    const fieldHeight = Math.max(10, lines.length * 5.5 + 7);
     drawBox(x, y, width, fieldHeight);
 
     return y + fieldHeight;
@@ -143,7 +143,7 @@ export const generatePermitPDF = (formData: PermitFormData): Blob => {
 
   let yPos = 30;
 
-  if (formData.permitId || formData.status) {
+  if (formData.ontivity_project_number || formData.status) {
     const infoBoxY = yPos;
     const infoBoxHeight = 12;
     doc.setFillColor(LIGHT_GRAY);
@@ -153,8 +153,8 @@ export const generatePermitPDF = (formData: PermitFormData): Blob => {
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
 
-    if (formData.permitId) {
-      doc.text(`Permit ID: ${formData.permitId}`, margin + 2, infoBoxY + 5);
+    if (formData.ontivity_project_number) {
+      doc.text(`Permit ID: PERMIT-${formData.ontivity_project_number}`, margin + 2, infoBoxY + 5);
     }
 
     if (formData.status) {
@@ -173,8 +173,8 @@ export const generatePermitPDF = (formData: PermitFormData): Blob => {
 
   let tempY = addField('Requestor', formData.requestor, margin, yPos, col1Width);
   let tempY2 = addField('Requester Type', formData.requester_type, col2X, yPos, col1Width);
-  addField('Ontivity Project Number', formData.ontivity_project_number, col3X, yPos, col1Width);
-  yPos = Math.max(tempY, tempY2) + 2;
+  let tempY3 = addField('Ontivity Project Number', formData.ontivity_project_number, col3X, yPos, col1Width);
+  yPos = Math.max(tempY, tempY2, tempY3) + 2;
 
   if (formData.requester_email) {
     yPos = addField('Requester Email', formData.requester_email, margin, yPos, contentWidth);
@@ -183,8 +183,8 @@ export const generatePermitPDF = (formData: PermitFormData): Blob => {
 
   tempY = addField('Performing Entity', formData.performing_entity, margin, yPos, col1Width);
   tempY2 = addField('Date of Project Commencement', formData.date_of_project_commencement, col2X, yPos, col1Width);
-  addField('Estimated Date of Completion', formData.estimated_date_of_completion, col3X, yPos, col1Width);
-  yPos = Math.max(tempY, tempY2) + 2;
+  tempY3 = addField('Estimated Date of Completion', formData.estimated_date_of_completion, col3X, yPos, col1Width);
+  yPos = Math.max(tempY, tempY2, tempY3) + 2;
 
   tempY = addField('Type of Permit', formData.type_of_permit, margin, yPos, col1Width);
   if (formData.utility_provider && formData.type_of_permit === 'Electrical') {
@@ -196,13 +196,13 @@ export const generatePermitPDF = (formData: PermitFormData): Blob => {
 
   tempY = addField('State', formData.state, margin, yPos, col1Width);
   tempY2 = addField('County', formData.county_or_parish, col2X, yPos, col1Width);
-  addField('City', formData.city, col3X, yPos, col1Width);
-  yPos = Math.max(tempY, tempY2) + 2;
+  tempY3 = addField('City', formData.city, col3X, yPos, col1Width);
+  yPos = Math.max(tempY, tempY2, tempY3) + 2;
 
   tempY = addField('Property Owner', formData.property_owner, margin, yPos, col1Width);
   tempY2 = addField('End Customer', formData.end_customer, col2X, yPos, col1Width);
-  addField('Project Value', `$${formData.project_value}`, col3X, yPos, col1Width);
-  yPos = Math.max(tempY, tempY2) + 2;
+  tempY3 = addField('Project Value', `$${formData.project_value}`, col3X, yPos, col1Width);
+  yPos = Math.max(tempY, tempY2, tempY3) + 2;
 
   if (formData.actual_date_of_completion) {
     yPos = addField('Actual Date of Completion', formData.actual_date_of_completion, margin, yPos, col1Width);

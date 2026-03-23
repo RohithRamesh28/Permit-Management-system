@@ -37,6 +37,7 @@ export interface Permit {
   signed_by?: string;
   signed_at?: string;
   signed_pdf_url?: string;
+  approved_by?: string;
   created_at: string;
   updated_at: string;
 }
