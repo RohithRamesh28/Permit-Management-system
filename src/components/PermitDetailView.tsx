@@ -1151,7 +1151,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                       className="flex items-center justify-center gap-2 w-full bg-[#0072BC] text-white px-4 py-3 rounded-lg hover:bg-[#005a94] transition-colors font-medium"
                     >
                       <FileText size={20} />
-                      Download Signed PDF
+                      Download Permit PDF
                     </a>
                   </div>
                 )}
