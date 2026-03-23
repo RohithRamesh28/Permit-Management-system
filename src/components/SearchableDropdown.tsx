@@ -5,6 +5,7 @@ interface SearchableDropdownProps {
   options: string[];
   value: string;
   onChange: (value: string) => void;
+  onSelect?: (value: string) => void;
   placeholder?: string;
   disabled?: boolean;
   required?: boolean;
@@ -16,6 +17,7 @@ export default function SearchableDropdown({
   options,
   value,
   onChange,
+  onSelect,
   placeholder = 'Search...',
   disabled = false,
   required = false,
@@ -46,6 +48,9 @@ export default function SearchableDropdown({
 
   const handleSelect = (option: string) => {
     onChange(option);
+    if (onSelect) {
+      onSelect(option);
+    }
     setIsOpen(false);
     setSearchTerm('');
   };

@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Upload, CheckCircle, FileText } from 'lucide-react';
+import { Upload, CheckCircle, FileText, Lock, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import SearchableDropdown from './SearchableDropdown';
 import { useSharePointJobs } from '../hooks/useSharePointJobs';
+import { useSharePointJobDetails } from '../hooks/useSharePointJobDetails';
 import { useAuth } from '../contexts/AuthContext';
 import { US_STATES_AND_TERRITORIES } from '../utils/usStates';
 import { getCurrentDateInMMDDYYYY } from '../utils/dateFormatters';
@@ -36,6 +37,10 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
   const { jobs, loading: jobsLoading } = useSharePointJobs();
   const { userName, userEmail } = useAuth();
 
+  const [selectedJobTitle, setSelectedJobTitle] = useState<string | null>(null);
+  const { details: jobDetails, loading: jobDetailsLoading } = useSharePointJobDetails(selectedJobTitle);
+  const [performingEntityLocked, setPerformingEntityLocked] = useState(false);
+
   const [formData, setFormData] = useState<FormData>({
     requestor: userName || '',
     requester_type: '',
@@ -61,6 +66,24 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
       setFormData((prev) => ({ ...prev, requestor: userName }));
     }
   }, [userName]);
+
+  useEffect(() => {
+    if (jobDetails) {
+      if (jobDetails.division) {
+        setFormData((prev) => ({ ...prev, performing_entity: jobDetails.division }));
+        setPerformingEntityLocked(true);
+      } else {
+        if (performingEntityLocked) {
+          setFormData((prev) => ({ ...prev, performing_entity: '' }));
+          setPerformingEntityLocked(false);
+        }
+      }
+
+      if (jobDetails.carrier) {
+        setFormData((prev) => ({ ...prev, end_customer: jobDetails.carrier }));
+      }
+    }
+  }, [jobDetails]);
 
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [requiresSignature, setRequiresSignature] = useState(false);
@@ -329,6 +352,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     name="ontivity_project_number"
                     value={formData.ontivity_project_number}
                     onChange={(value) => setFormData((prev) => ({ ...prev, ontivity_project_number: value }))}
+                    onSelect={(value) => setSelectedJobTitle(value)}
                     options={jobs}
                     placeholder="Search projects..."
                     required
@@ -338,24 +362,40 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                  <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
                     Performing Entity <span className="text-red-500">*</span>
+                    {performingEntityLocked && <Lock size={12} className="text-gray-500" />}
+                    {jobDetailsLoading && <Loader2 size={12} className="text-blue-500 animate-spin" />}
                   </label>
-                  <select
-                    name="performing_entity"
-                    value={formData.performing_entity}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
-                  >
-                    <option value="">Select entity</option>
-                    <option value="ETT">ETT</option>
-                    <option value="CMS">CMS</option>
-                    <option value="ETR">ETR</option>
-                    <option value="LEG">LEG</option>
-                    <option value="MW">MW</option>
-                    <option value="ONT">ONT</option>
-                  </select>
+                  {performingEntityLocked ? (
+                    <>
+                      <input
+                        type="text"
+                        name="performing_entity"
+                        value={formData.performing_entity}
+                        readOnly
+                        required
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed"
+                      />
+                      <p className="text-[10px] text-gray-500 mt-0.5">Auto-filled from SharePoint Division</p>
+                    </>
+                  ) : (
+                    <select
+                      name="performing_entity"
+                      value={formData.performing_entity}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                    >
+                      <option value="">Select entity</option>
+                      <option value="ETT">ETT</option>
+                      <option value="CMS">CMS</option>
+                      <option value="ETR">ETR</option>
+                      <option value="LEG">LEG</option>
+                      <option value="MW">MW</option>
+                      <option value="ONT">ONT</option>
+                    </select>
+                  )}
                 </div>
 
                 <div>
@@ -490,8 +530,9 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
                       End Customer <span className="text-red-500">*</span>
+                      {jobDetailsLoading && <Loader2 size={12} className="text-blue-500 animate-spin" />}
                     </label>
                     <input
                       type="text"
@@ -502,6 +543,9 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                       placeholder="Customer name"
                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
                     />
+                    {jobDetails?.carrier && (
+                      <p className="text-[10px] text-gray-500 mt-0.5">Auto-filled from SharePoint, editable</p>
+                    )}
                   </div>
 
                   <div>
