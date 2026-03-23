@@ -5,6 +5,7 @@ import SearchableDropdown from './SearchableDropdown';
 import { useSharePointJobs } from '../hooks/useSharePointJobs';
 import { useSharePointJobDetails } from '../hooks/useSharePointJobDetails';
 import { useAuth } from '../contexts/AuthContext';
+import { useQualifiedPerson } from '../hooks/useQualifiedPerson';
 import { US_STATES_AND_TERRITORIES } from '../utils/usStates';
 import { getCurrentDateInMMDDYYYY } from '../utils/dateFormatters';
 import DateInput from './DateInput';
@@ -36,6 +37,7 @@ interface FormData {
 export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
   const { jobs, loading: jobsLoading } = useSharePointJobs();
   const { userName, userEmail } = useAuth();
+  const { qpInfo, loading: qpLoading } = useQualifiedPerson(userEmail);
 
   const [selectedJobTitle, setSelectedJobTitle] = useState<string | null>(null);
   const { details: jobDetails, loading: jobDetailsLoading } = useSharePointJobDetails(selectedJobTitle);
@@ -285,8 +287,12 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
         <div className="max-w-5xl mx-auto">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="bg-gradient-to-r from-gray-50 to-blue-50 -mx-6 -mt-6 px-6 pt-5 pb-4 mb-5 border-b-4 border-[#0072BC]">
-              <div className="flex items-center">
+              <div className="flex items-center justify-between">
                 <img src="/image_(6).png" alt="Ontivity Logo" className="h-12 w-auto" />
+                <div className="text-right">
+                  <div className="text-[10px] font-medium text-gray-600 uppercase tracking-wide">Date of Request</div>
+                  <div className="text-sm font-semibold text-gray-900">{formData.date_of_request}</div>
+                </div>
               </div>
             </div>
 
@@ -328,16 +334,20 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Date of Request <span className="text-red-500">*</span>
+                  <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
+                    Qualified Person (Manager) <span className="text-red-500">*</span>
+                    {qpLoading && <Loader2 size={12} className="text-blue-500 animate-spin" />}
                   </label>
                   <input
                     type="text"
-                    value={formData.date_of_request}
+                    value={qpInfo.managerName || 'Not found'}
                     readOnly
                     disabled
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed"
                   />
+                  {qpInfo.managerEmail && (
+                    <p className="text-[10px] text-gray-500 mt-0.5">{qpInfo.managerEmail}</p>
+                  )}
                 </div>
               </div>
 
@@ -461,17 +471,22 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">
-                      City <span className="text-red-500">*</span>
+                      State <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="text"
-                      name="city"
-                      value={formData.city}
+                    <select
+                      name="state"
+                      value={formData.state}
                       onChange={handleInputChange}
                       required
-                      placeholder="e.g., Los Angeles"
                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
-                    />
+                    >
+                      <option value="">Select state</option>
+                      {US_STATES_AND_TERRITORIES.map((state) => (
+                        <option key={state.value} value={state.label}>
+                          {state.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   <div>
@@ -491,22 +506,17 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
 
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">
-                      State <span className="text-red-500">*</span>
+                      City <span className="text-red-500">*</span>
                     </label>
-                    <select
-                      name="state"
-                      value={formData.state}
+                    <input
+                      type="text"
+                      name="city"
+                      value={formData.city}
                       onChange={handleInputChange}
                       required
+                      placeholder="e.g., Los Angeles"
                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
-                    >
-                      <option value="">Select state</option>
-                      {US_STATES_AND_TERRITORIES.map((state) => (
-                        <option key={state.value} value={state.label}>
-                          {state.label}
-                        </option>
-                      ))}
-                    </select>
+                    />
                   </div>
                 </div>
 
