@@ -66,7 +66,8 @@ export const generatePermitPDF = (formData: PermitFormData): Blob => {
     doc.setTextColor(DARK_GRAY);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
-    doc.text(formData.date_of_request, pageWidth - margin, 14, { align: 'right' });
+    const formattedDate = new Date(formData.date_of_request).toLocaleDateString('en-US');
+    doc.text(formattedDate, pageWidth - margin, 14, { align: 'right' });
   };
 
   const addFooter = () => {
