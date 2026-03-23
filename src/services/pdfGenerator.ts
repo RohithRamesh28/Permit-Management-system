@@ -76,7 +76,7 @@ export const generatePermitPDF = (formData: PermitFormData): Blob => {
     doc.setTextColor(100, 100, 100);
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    const footerText = 'LOCAL CONNECTIONS | NATIONAL SOLUTIONS';
+    const footerText = '';
     doc.text(footerText, pageWidth / 2, pageHeight - 7, { align: 'center' });
     doc.text(`Generated: ${new Date().toLocaleString()}`, pageWidth - margin, pageHeight - 7, { align: 'right' });
   };
