@@ -99,8 +99,11 @@ export default function PermitListView({ onNavigate, onSelectPermit }: PermitLis
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-gray-500">Loading permits...</div>
+      <div className="flex-1 flex items-center justify-center h-screen w-full">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-gray-200 border-t-[#0072BC] rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-600 font-medium">Loading permits...</p>
+        </div>
       </div>
     );
   }

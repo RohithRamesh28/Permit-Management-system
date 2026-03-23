@@ -32,6 +32,8 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
   const { jobs, loading: jobsLoading } = useSharePointJobs();
   const [editFormData, setEditFormData] = useState<any>(null);
   const [showResubmitConfirmModal, setShowResubmitConfirmModal] = useState(false);
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     fetchPermitDetails();
@@ -227,7 +229,9 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
       setIsEditMode(false);
       await fetchPermitDetails();
 
-      onNavigate('list');
+      setSuccessMessage('Permit approved successfully');
+      setShowSuccessToast(true);
+      setTimeout(() => setShowSuccessToast(false), 3000);
     } catch (error) {
       console.error('Error approving permit:', error);
       alert('Error approving permit. Please try again.');
@@ -311,7 +315,9 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
       setIsEditMode(false);
       await fetchPermitDetails();
 
-      onNavigate('list');
+      setSuccessMessage('Permit rejected successfully');
+      setShowSuccessToast(true);
+      setTimeout(() => setShowSuccessToast(false), 3000);
     } catch (error) {
       console.error('Error rejecting permit:', error);
       alert('Error rejecting permit. Please try again.');
@@ -431,7 +437,9 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
       setIsEditMode(false);
       await fetchPermitDetails();
 
-      onNavigate('list');
+      setSuccessMessage('Permit resubmitted successfully');
+      setShowSuccessToast(true);
+      setTimeout(() => setShowSuccessToast(false), 3000);
     } catch (error) {
       console.error('Error resubmitting permit:', error);
       alert('Error resubmitting permit. Please try again.');
@@ -1309,6 +1317,26 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                 Yes, Resubmit
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {actionInProgress && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl p-10 max-w-sm w-full mx-4 text-center">
+            <div className="w-16 h-16 border-4 border-gray-200 border-t-[#0072BC] rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-gray-900 font-medium text-lg mb-2">Processing...</p>
+            <p className="text-gray-600 text-sm">Please wait while we process your request</p>
+          </div>
+        </div>
+      )}
+
+      {showSuccessToast && (
+        <div className="fixed top-8 right-8 bg-green-600 text-white px-6 py-4 rounded-lg shadow-xl flex items-center gap-3 z-50 animate-fade-in">
+          <CheckCircle size={24} />
+          <div>
+            <p className="font-semibold">{successMessage}</p>
+            <p className="text-sm text-green-100">The page will refresh automatically</p>
           </div>
         </div>
       )}
