@@ -236,11 +236,7 @@ export const generatePermitPDF = (formData: PermitFormData): Blob => {
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.text(`Signed by: ${formData.signerName || formData.requestor}`, margin + 4, yPos + 22);
-
-    doc.setDrawColor(BORDER_GRAY);
-    doc.setLineWidth(0.5);
-    doc.line(margin + 90, yPos + 18, pageWidth - margin - 4, yPos + 18);
-    doc.text(new Date().toLocaleDateString(), margin + 90, yPos + 22);
+    doc.text(new Date().toLocaleDateString(), margin + 4, yPos + 27);
 
     yPos += 35;
   } else if (formData.requiresSignature) {
