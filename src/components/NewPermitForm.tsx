@@ -580,7 +580,6 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                       value={formData.actual_date_of_completion}
                       onChange={handleDateChange}
                     />
-                    <p className="text-[10px] text-gray-500 mt-0.5">Optional - Fill in when project is completed</p>
                   </div>
                 </div>
               </div>
