@@ -600,8 +600,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
           <div className="p-6 border-b border-gray-200 flex justify-between items-start">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">PERMIT-{permit.ontivity_project_number}</h1>
-              <p className="text-gray-600">Project: {permit.ontivity_project_number}</p>
+              <p className="text-xl font-semibold text-gray-900">Project: {permit.ontivity_project_number}</p>
               {readOnlyMode && (
                 <p className="text-sm text-green-600 mt-2 font-medium">Form sent to SharePoint</p>
               )}

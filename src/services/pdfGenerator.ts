@@ -154,7 +154,7 @@ export const generatePermitPDF = (formData: PermitFormData): Blob => {
     doc.setFont('helvetica', 'normal');
 
     if (formData.ontivity_project_number) {
-      doc.text(`Permit ID: PERMIT-${formData.ontivity_project_number}`, margin + 2, infoBoxY + 5);
+      doc.text(`PERMIT-${formData.ontivity_project_number}`, margin + 2, infoBoxY + 5);
     }
 
     if (formData.status) {
