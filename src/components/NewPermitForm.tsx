@@ -306,7 +306,6 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     required
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed"
                   />
-                  <p className="text-[10px] text-gray-500 mt-0.5">Auto-filled from logged in user</p>
                 </div>
 
                 <div>
@@ -339,7 +338,6 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     disabled
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed"
                   />
-                  <p className="text-[10px] text-gray-500 mt-0.5">Auto-filled with current date</p>
                 </div>
               </div>
 
@@ -377,7 +375,6 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                         required
                         className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed"
                       />
-                      <p className="text-[10px] text-gray-500 mt-0.5">Auto-filled from SharePoint Division</p>
                     </>
                   ) : (
                     <select
@@ -543,9 +540,6 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                       placeholder="Customer name"
                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
                     />
-                    {jobDetails?.carrier && (
-                      <p className="text-[10px] text-gray-500 mt-0.5">Auto-filled from SharePoint, editable</p>
-                    )}
                   </div>
 
                   <div>
