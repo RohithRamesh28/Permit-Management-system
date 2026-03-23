@@ -1143,7 +1143,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
 
                 {permit.signed_pdf_url && (
                   <div className="bg-gray-50 rounded-lg p-6">
-                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Signed Document</h2>
+                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Permit Document</h2>
                     <a
                       href={permit.signed_pdf_url}
                       target="_blank"
