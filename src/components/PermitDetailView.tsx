@@ -44,6 +44,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
   useEffect(() => {
     if (permit && isEditMode) {
       setEditFormData({
+        permit_jurisdiction_type: permit.permit_jurisdiction_type || 'State',
         ontivity_project_number: permit.ontivity_project_number || '',
         performing_entity: permit.performing_entity || '',
         date_of_project_commencement: permit.date_of_project_commencement || '',
@@ -372,6 +373,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
     try {
       const updateData = {
         status: 'Pending Approval',
+        permit_jurisdiction_type: editFormData.permit_jurisdiction_type,
         ontivity_project_number: editFormData.ontivity_project_number,
         performing_entity: editFormData.performing_entity,
         date_of_project_commencement: editFormData.date_of_project_commencement,
@@ -379,8 +381,8 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         type_of_permit: editFormData.type_of_permit,
         utility_provider: editFormData.type_of_permit === 'Electrical Permit' ? editFormData.utility_provider : null,
         state: editFormData.state,
-        county_or_parish: editFormData.county_or_parish,
-        city: editFormData.city,
+        county_or_parish: editFormData.permit_jurisdiction_type === 'County/City' ? editFormData.county_or_parish : null,
+        city: editFormData.permit_jurisdiction_type === 'County/City' ? editFormData.city : null,
         property_owner: editFormData.property_owner,
         end_customer: editFormData.end_customer,
         project_value: parseFloat(editFormData.project_value) || 0,
@@ -667,6 +669,10 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                       <div className="space-y-4">
                         <div className="grid grid-cols-3 gap-4">
                           <div>
+                            <p className="text-sm text-gray-500">Jurisdiction Type</p>
+                            <p className="text-gray-900 font-medium">{permit.permit_jurisdiction_type || 'State'}</p>
+                          </div>
+                          <div>
                             <p className="text-sm text-gray-500">Type of Permit</p>
                             <p className="text-gray-900 font-medium">{permit.type_of_permit}</p>
                           </div>
@@ -677,19 +683,23 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                             </div>
                           )}
                         </div>
-                        <div className="grid grid-cols-3 gap-4">
-                          <div>
-                            <p className="text-sm text-gray-500">City</p>
-                            <p className="text-gray-900 font-medium">{permit.city}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-500">County/Parish</p>
-                            <p className="text-gray-900 font-medium">{permit.county_or_parish}</p>
-                          </div>
+                        <div className={`grid ${(permit.permit_jurisdiction_type === 'County/City' || !permit.permit_jurisdiction_type) ? 'grid-cols-3' : 'grid-cols-1'} gap-4`}>
                           <div>
                             <p className="text-sm text-gray-500">State</p>
                             <p className="text-gray-900 font-medium">{permit.state}</p>
                           </div>
+                          {(permit.permit_jurisdiction_type === 'County/City' || !permit.permit_jurisdiction_type) && (
+                            <>
+                              <div>
+                                <p className="text-sm text-gray-500">County/Parish</p>
+                                <p className="text-gray-900 font-medium">{permit.county_or_parish}</p>
+                              </div>
+                              <div>
+                                <p className="text-sm text-gray-500">City</p>
+                                <p className="text-gray-900 font-medium">{permit.city}</p>
+                              </div>
+                            </>
+                          )}
                         </div>
                         <div className="grid grid-cols-3 gap-4">
                           <div>
@@ -767,6 +777,36 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                             disabled
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
                           />
+                        </div>
+                      </div>
+
+                      <div className="border-t border-gray-200 pt-4 pb-4 mt-6">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Permit Jurisdiction Type <span className="text-red-500">*</span>
+                        </label>
+                        <div className="flex gap-6">
+                          <label className="flex items-center cursor-pointer">
+                            <input
+                              type="radio"
+                              name="permit_jurisdiction_type"
+                              value="State"
+                              checked={editFormData?.permit_jurisdiction_type === 'State'}
+                              onChange={handleEditInputChange}
+                              className="w-4 h-4 text-[#0072BC] border-gray-300 focus:ring-[#0072BC]"
+                            />
+                            <span className="ml-2 text-sm text-gray-700">State Permit</span>
+                          </label>
+                          <label className="flex items-center cursor-pointer">
+                            <input
+                              type="radio"
+                              name="permit_jurisdiction_type"
+                              value="County/City"
+                              checked={editFormData?.permit_jurisdiction_type === 'County/City'}
+                              onChange={handleEditInputChange}
+                              className="w-4 h-4 text-[#0072BC] border-gray-300 focus:ring-[#0072BC]"
+                            />
+                            <span className="ml-2 text-sm text-gray-700">County/City Permit</span>
+                          </label>
                         </div>
                       </div>
 
@@ -876,37 +916,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                       </div>
 
                       <div className="space-y-4 mt-6">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              City <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                              type="text"
-                              name="city"
-                              value={editFormData?.city || ''}
-                              onChange={handleEditInputChange}
-                              required
-                              placeholder="e.g., Los Angeles"
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              County <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                              type="text"
-                              name="county_or_parish"
-                              value={editFormData?.county_or_parish || ''}
-                              onChange={handleEditInputChange}
-                              required
-                              placeholder="Enter county name"
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
-                            />
-                          </div>
-
+                        <div className={`grid grid-cols-1 ${editFormData?.permit_jurisdiction_type === 'County/City' ? 'md:grid-cols-3' : 'md:grid-cols-1'} gap-4`}>
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                               State <span className="text-red-500">*</span>
@@ -926,6 +936,40 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                               ))}
                             </select>
                           </div>
+
+                          {editFormData?.permit_jurisdiction_type === 'County/City' && (
+                            <>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  County <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                  type="text"
+                                  name="county_or_parish"
+                                  value={editFormData?.county_or_parish || ''}
+                                  onChange={handleEditInputChange}
+                                  required
+                                  placeholder="Enter county name"
+                                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  City <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                  type="text"
+                                  name="city"
+                                  value={editFormData?.city || ''}
+                                  onChange={handleEditInputChange}
+                                  required
+                                  placeholder="e.g., Los Angeles"
+                                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                                />
+                              </div>
+                            </>
+                          )}
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

@@ -17,6 +17,7 @@ interface NewPermitFormProps {
 interface FormData {
   requestor: string;
   requester_type: string;
+  permit_jurisdiction_type: string;
   ontivity_project_number: string;
   performing_entity: string;
   date_of_request: string;
@@ -46,6 +47,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
   const [formData, setFormData] = useState<FormData>({
     requestor: userName || '',
     requester_type: '',
+    permit_jurisdiction_type: 'State',
     ontivity_project_number: '',
     performing_entity: '',
     date_of_request: getCurrentDateInMMDDYYYY(),
@@ -132,6 +134,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
             requestor: formData.requestor,
             requester_type: formData.requester_type,
             requester_email: userEmail,
+            permit_jurisdiction_type: formData.permit_jurisdiction_type,
             ontivity_project_number: formData.ontivity_project_number,
             performing_entity: formData.performing_entity,
             date_of_request: formData.date_of_request,
@@ -140,8 +143,8 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
             type_of_permit: formData.type_of_permit,
             utility_provider: formData.type_of_permit === 'Electrical Permit' ? formData.utility_provider : null,
             state: formData.state,
-            county_or_parish: formData.county_or_parish,
-            city: formData.city,
+            county_or_parish: formData.permit_jurisdiction_type === 'County/City' ? formData.county_or_parish : null,
+            city: formData.permit_jurisdiction_type === 'County/City' ? formData.city : null,
             property_owner: formData.property_owner,
             end_customer: formData.end_customer,
             project_value: parseFloat(formData.project_value) || 0,
@@ -351,6 +354,36 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                 </div>
               </div>
 
+              <div className="border-t border-gray-200 pt-4 pb-4">
+                <label className="block text-xs font-medium text-gray-700 mb-2">
+                  Permit Jurisdiction Type <span className="text-red-500">*</span>
+                </label>
+                <div className="flex gap-6">
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="radio"
+                      name="permit_jurisdiction_type"
+                      value="State"
+                      checked={formData.permit_jurisdiction_type === 'State'}
+                      onChange={handleInputChange}
+                      className="w-4 h-4 text-[#0072BC] border-gray-300 focus:ring-[#0072BC]"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">State Permit</span>
+                  </label>
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="radio"
+                      name="permit_jurisdiction_type"
+                      value="County/City"
+                      checked={formData.permit_jurisdiction_type === 'County/City'}
+                      onChange={handleInputChange}
+                      className="w-4 h-4 text-[#0072BC] border-gray-300 focus:ring-[#0072BC]"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">County/City Permit</span>
+                  </label>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -468,7 +501,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
               </div>
 
               <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className={`grid grid-cols-1 ${formData.permit_jurisdiction_type === 'County/City' ? 'md:grid-cols-3' : 'md:grid-cols-1'} gap-4`}>
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">
                       State <span className="text-red-500">*</span>
@@ -489,35 +522,39 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     </select>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      County <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="county_or_parish"
-                      value={formData.county_or_parish}
-                      onChange={handleInputChange}
-                      required
-                      placeholder="Enter county name"
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
-                    />
-                  </div>
+                  {formData.permit_jurisdiction_type === 'County/City' && (
+                    <>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          County <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          name="county_or_parish"
+                          value={formData.county_or_parish}
+                          onChange={handleInputChange}
+                          required
+                          placeholder="Enter county name"
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                        />
+                      </div>
 
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      City <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="city"
-                      value={formData.city}
-                      onChange={handleInputChange}
-                      required
-                      placeholder="e.g., Los Angeles"
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
-                    />
-                  </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          City <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          name="city"
+                          value={formData.city}
+                          onChange={handleInputChange}
+                          required
+                          placeholder="e.g., Los Angeles"
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                        />
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
