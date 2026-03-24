@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, CheckCircle } from 'lucide-react';
+import { X, CheckCircle, ZoomIn, ZoomOut } from 'lucide-react';
 import { SignaturePad, SignaturePadRef } from './SignaturePad';
 
 interface PdfSigningModalProps {
@@ -19,6 +19,7 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
   const [cursorPosition, setCursorPosition] = useState<{ x: number; y: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [signatureSize, setSignatureSize] = useState({ width: 150, height: 50 });
   const signaturePadRef = useRef<SignaturePadRef>(null);
   const pdfContainerRef = useRef<HTMLDivElement>(null);
 
@@ -55,15 +56,18 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
     const rect = pdfContainerRef.current?.getBoundingClientRect();
     if (!rect) return;
 
+    const scrollTop = pdfContainerRef.current?.parentElement?.scrollTop || 0;
+    const scrollLeft = pdfContainerRef.current?.parentElement?.scrollLeft || 0;
+
     if (isDragging && signaturePosition) {
       setSignaturePosition({
-        x: e.clientX - rect.left - dragOffset.x,
-        y: e.clientY - rect.top - dragOffset.y,
+        x: e.clientX - rect.left + scrollLeft - dragOffset.x,
+        y: e.clientY - rect.top + scrollTop - dragOffset.y,
       });
     } else if (!signaturePosition) {
       setCursorPosition({
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
+        x: e.clientX - rect.left + scrollLeft,
+        y: e.clientY - rect.top + scrollTop,
       });
     }
   };
@@ -74,10 +78,13 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
     const rect = pdfContainerRef.current?.getBoundingClientRect();
     if (!rect) return;
 
+    const scrollTop = pdfContainerRef.current?.parentElement?.scrollTop || 0;
+    const scrollLeft = pdfContainerRef.current?.parentElement?.scrollLeft || 0;
+
     if (!signaturePosition) {
       setSignaturePosition({
-        x: e.clientX - rect.left - 75,
-        y: e.clientY - rect.top - 25,
+        x: e.clientX - rect.left + scrollLeft - signatureSize.width / 2,
+        y: e.clientY - rect.top + scrollTop - signatureSize.height / 2,
       });
       setCursorPosition(null);
     }
@@ -89,12 +96,29 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
 
     setIsDragging(true);
     const rect = pdfContainerRef.current?.getBoundingClientRect();
+    const scrollTop = pdfContainerRef.current?.parentElement?.scrollTop || 0;
+    const scrollLeft = pdfContainerRef.current?.parentElement?.scrollLeft || 0;
+
     if (rect) {
       setDragOffset({
-        x: e.clientX - rect.left - signaturePosition.x,
-        y: e.clientY - rect.top - signaturePosition.y,
+        x: e.clientX - rect.left + scrollLeft - signaturePosition.x,
+        y: e.clientY - rect.top + scrollTop - signaturePosition.y,
       });
     }
+  };
+
+  const handleIncreaseSize = () => {
+    setSignatureSize(prev => ({
+      width: Math.min(prev.width + 30, 300),
+      height: Math.min(prev.height + 10, 100),
+    }));
+  };
+
+  const handleDecreaseSize = () => {
+    setSignatureSize(prev => ({
+      width: Math.max(prev.width - 30, 90),
+      height: Math.max(prev.height - 10, 30),
+    }));
   };
 
   const handleMouseUp = () => {
@@ -220,15 +244,15 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
                     <div
                       className="absolute pointer-events-none opacity-70 z-10"
                       style={{
-                        left: `${cursorPosition.x - 75}px`,
-                        top: `${cursorPosition.y - 25}px`,
+                        left: `${cursorPosition.x - signatureSize.width / 2}px`,
+                        top: `${cursorPosition.y - signatureSize.height / 2}px`,
                       }}
                     >
                       <img
                         src={signatureDataUrl}
                         alt="Signature preview"
                         className="border-2 border-dashed border-blue-500 bg-white"
-                        style={{ width: '150px', height: '50px' }}
+                        style={{ width: `${signatureSize.width}px`, height: `${signatureSize.height}px` }}
                       />
                     </div>
                   )}
@@ -246,7 +270,7 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
                         src={signatureDataUrl}
                         alt="Signature"
                         className="border-2 border-blue-500 bg-white"
-                        style={{ width: '150px', height: '50px' }}
+                        style={{ width: `${signatureSize.width}px`, height: `${signatureSize.height}px` }}
                       />
                     </div>
                   )}
@@ -255,12 +279,34 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
             </div>
 
             <div className="p-4 border-t border-gray-200 bg-gray-50 flex justify-between items-center flex-shrink-0">
-              <button
-                onClick={handleBackToDrawing}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Back to Drawing
-              </button>
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={handleBackToDrawing}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Back to Drawing
+                </button>
+
+                <div className="flex items-center gap-2 border-l border-gray-300 pl-4">
+                  <span className="text-sm text-gray-600 font-medium">Size:</span>
+                  <button
+                    onClick={handleDecreaseSize}
+                    disabled={signatureSize.width <= 90}
+                    className="p-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Decrease signature size"
+                  >
+                    <ZoomOut size={18} />
+                  </button>
+                  <button
+                    onClick={handleIncreaseSize}
+                    disabled={signatureSize.width >= 300}
+                    className="p-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Increase signature size"
+                  >
+                    <ZoomIn size={18} />
+                  </button>
+                </div>
+              </div>
 
               <div className="flex gap-3">
                 <button
