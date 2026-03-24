@@ -4,6 +4,7 @@ import { supabase, Permit, PermitDocument, PermitAuditLog } from '../lib/supabas
 import { SignaturePad, SignaturePadRef } from './SignaturePad';
 import { generatePermitPDF, downloadPDF } from '../services/pdfGenerator';
 import DocumentPreviewModal from './DocumentPreviewModal';
+import PdfSigningModal from './PdfSigningModal';
 import SearchableDropdown from './SearchableDropdown';
 import { useSharePointJobs } from '../hooks/useSharePointJobs';
 import { US_STATES_AND_TERRITORIES } from '../utils/usStates';
@@ -119,6 +120,13 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
     }
   };
 
+  const handlePdfSigningApprove = async (signatureData: string, signerNameFromModal: string, position: { x: number; y: number }) => {
+    setSignerName(signerNameFromModal);
+    setShowPdfSignModal(false);
+    setPdfToSign(null);
+    await handleApprove(signatureData);
+  };
+
   const handleRejectClick = () => {
     setShowRejectModal(true);
   };
@@ -136,12 +144,12 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
 
       if (signatureData) {
         updateData.signature_image_url = signatureData;
-        updateData.signed_by = signerName;
+        updateData.signed_by = signerName || userName || 'System Admin';
         updateData.signed_at = new Date().toISOString();
       }
 
       const approvalDate = new Date().toLocaleDateString();
-      const approverName = signatureData ? signerName : (userName || 'System Admin');
+      const approverName = signatureData ? (signerName || userName || 'System Admin') : (userName || 'System Admin');
       updateData.approved_by = approverName;
 
       const pdfBlob = generatePermitPDF({
@@ -1627,51 +1635,16 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
       )}
 
       {showPdfSignModal && pdfToSign && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-5xl w-full max-h-[90vh] flex flex-col">
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-xl font-bold text-gray-900">Sign Document</h2>
-              <p className="text-sm text-gray-600 mt-1">
-                Click "Add Signature" to draw your signature, then click anywhere on the document to place it.
-              </p>
-            </div>
-
-            <div className="flex-1 overflow-auto p-6">
-              <div className="border border-gray-300 rounded-lg overflow-hidden bg-gray-50">
-                <iframe
-                  src={pdfToSign.url}
-                  className="w-full h-[600px]"
-                  title="Document to Sign"
-                />
-              </div>
-            </div>
-
-            <div className="p-6 border-t border-gray-200 flex justify-between items-center">
-              <button
-                onClick={() => {
-                  setPendingAction('approve');
-                  setShowSignatureModal(true);
-                }}
-                className="px-4 py-2 bg-[#0072BC] text-white rounded-lg hover:bg-[#005a94] transition-colors"
-              >
-                Add Signature
-              </button>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    setShowPdfSignModal(false);
-                    setPdfToSign(null);
-                    setSignaturePosition(null);
-                  }}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <PdfSigningModal
+          pdfUrl={pdfToSign.url}
+          pdfName={pdfToSign.name}
+          onClose={() => {
+            setShowPdfSignModal(false);
+            setPdfToSign(null);
+            setSignaturePosition(null);
+          }}
+          onApprove={handlePdfSigningApprove}
+        />
       )}
 
       {showSuccessToast && (
