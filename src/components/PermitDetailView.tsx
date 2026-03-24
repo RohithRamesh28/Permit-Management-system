@@ -39,6 +39,9 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [additionalFiles, setAdditionalFiles] = useState<File[]>([]);
   const [uploadingFiles, setUploadingFiles] = useState(false);
+  const [showPdfSignModal, setShowPdfSignModal] = useState(false);
+  const [pdfToSign, setPdfToSign] = useState<{ url: string; name: string } | null>(null);
+  const [signaturePosition, setSignaturePosition] = useState<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     fetchPermitDetails();
@@ -103,7 +106,12 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
 
 
   const handleApproveClick = () => {
-    if (permit?.requires_signature && !permit.signature_image_url) {
+    const documentToSign = documents.find(doc => doc.document_type === 'to_sign');
+
+    if (documentToSign && !permit?.signature_image_url) {
+      setPdfToSign({ url: documentToSign.file_url, name: documentToSign.file_name });
+      setShowPdfSignModal(true);
+    } else if (permit?.requires_signature && !permit.signature_image_url) {
       setPendingAction('approve');
       setShowSignatureModal(true);
     } else {
@@ -358,6 +366,10 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
     }
 
     const signatureData = signaturePadRef.current.toDataURL();
+
+    setShowSignatureModal(false);
+    setShowPdfSignModal(false);
+    setPdfToSign(null);
 
     if (pendingAction === 'approve') {
       await handleApprove(signatureData);
@@ -1243,7 +1255,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                             className="w-full flex items-center justify-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
                           >
                             <CheckCircle size={18} />
-                            Approve
+                            {documents.find(doc => doc.document_type === 'to_sign') ? 'Sign and Approve' : 'Approve'}
                           </button>
                           <button
                             onClick={handleRejectClick}
@@ -1263,7 +1275,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                             className="w-full flex items-center justify-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
                           >
                             <CheckCircle size={18} />
-                            Approve
+                            {documents.find(doc => doc.document_type === 'to_sign') ? 'Sign and Approve' : 'Approve'}
                           </button>
                           <button
                             onClick={handleRejectClick}
@@ -1609,6 +1621,54 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
               >
                 {uploadingFiles ? 'Uploading...' : 'Upload Files'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPdfSignModal && pdfToSign && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-5xl w-full max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900">Sign Document</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Click "Add Signature" to draw your signature, then click anywhere on the document to place it.
+              </p>
+            </div>
+
+            <div className="flex-1 overflow-auto p-6">
+              <div className="border border-gray-300 rounded-lg overflow-hidden bg-gray-50">
+                <iframe
+                  src={pdfToSign.url}
+                  className="w-full h-[600px]"
+                  title="Document to Sign"
+                />
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-200 flex justify-between items-center">
+              <button
+                onClick={() => {
+                  setPendingAction('approve');
+                  setShowSignatureModal(true);
+                }}
+                className="px-4 py-2 bg-[#0072BC] text-white rounded-lg hover:bg-[#005a94] transition-colors"
+              >
+                Add Signature
+              </button>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowPdfSignModal(false);
+                    setPdfToSign(null);
+                    setSignaturePosition(null);
+                  }}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
         </div>
