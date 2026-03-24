@@ -200,54 +200,57 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
 
         {step === 'place' && (
           <>
-            <div
-              ref={pdfContainerRef}
-              className="flex-1 overflow-auto bg-gray-100 p-4 relative"
-              onMouseMove={handlePdfMouseMove}
-              onClick={handlePdfClick}
-              style={{ cursor: signaturePosition ? 'default' : 'crosshair' }}
-            >
-              <div className="relative inline-block min-w-full">
-                <iframe
-                  src={pdfUrl}
-                  title={pdfName}
-                  className="w-full h-[calc(95vh-200px)] border-0 rounded bg-white pointer-events-none"
-                />
+            <div className="flex-1 overflow-auto bg-gray-100 relative">
+              <div
+                ref={pdfContainerRef}
+                className="relative min-h-full p-4"
+                onMouseMove={handlePdfMouseMove}
+                onClick={handlePdfClick}
+                style={{ cursor: signaturePosition ? 'default' : 'crosshair' }}
+              >
+                <div className="relative bg-white rounded shadow-lg mx-auto" style={{ maxWidth: '800px' }}>
+                  <iframe
+                    src={pdfUrl}
+                    title={pdfName}
+                    className="w-full border-0 rounded"
+                    style={{ height: '1000px', pointerEvents: 'none' }}
+                  />
 
-                {cursorPosition && !signaturePosition && (
-                  <div
-                    className="absolute pointer-events-none opacity-70"
-                    style={{
-                      left: `${cursorPosition.x - 75}px`,
-                      top: `${cursorPosition.y - 25}px`,
-                    }}
-                  >
-                    <img
-                      src={signatureDataUrl}
-                      alt="Signature preview"
-                      className="border-2 border-dashed border-blue-500 bg-white"
-                      style={{ width: '150px', height: '50px' }}
-                    />
-                  </div>
-                )}
+                  {cursorPosition && !signaturePosition && (
+                    <div
+                      className="absolute pointer-events-none opacity-70 z-10"
+                      style={{
+                        left: `${cursorPosition.x - 75}px`,
+                        top: `${cursorPosition.y - 25}px`,
+                      }}
+                    >
+                      <img
+                        src={signatureDataUrl}
+                        alt="Signature preview"
+                        className="border-2 border-dashed border-blue-500 bg-white"
+                        style={{ width: '150px', height: '50px' }}
+                      />
+                    </div>
+                  )}
 
-                {signaturePosition && (
-                  <div
-                    className={`absolute ${isDragging ? 'cursor-grabbing' : 'cursor-grab'} shadow-lg`}
-                    style={{
-                      left: `${signaturePosition.x}px`,
-                      top: `${signaturePosition.y}px`,
-                    }}
-                    onMouseDown={handleSignatureMouseDown}
-                  >
-                    <img
-                      src={signatureDataUrl}
-                      alt="Signature"
-                      className="border-2 border-blue-500 bg-white"
-                      style={{ width: '150px', height: '50px' }}
-                    />
-                  </div>
-                )}
+                  {signaturePosition && (
+                    <div
+                      className={`absolute ${isDragging ? 'cursor-grabbing' : 'cursor-grab'} shadow-lg z-10`}
+                      style={{
+                        left: `${signaturePosition.x}px`,
+                        top: `${signaturePosition.y}px`,
+                      }}
+                      onMouseDown={handleSignatureMouseDown}
+                    >
+                      <img
+                        src={signatureDataUrl}
+                        alt="Signature"
+                        className="border-2 border-blue-500 bg-white"
+                        style={{ width: '150px', height: '50px' }}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
