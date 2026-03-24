@@ -90,6 +90,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
   }, [jobDetails]);
 
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [documentToSign, setDocumentToSign] = useState<File | null>(null);
   const [requiresSignature, setRequiresSignature] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -110,6 +111,16 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
 
   const handleRemoveFile = (index: number) => {
     setUploadedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleDocumentToSignChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setDocumentToSign(e.target.files[0]);
+    }
+  };
+
+  const handleRemoveDocumentToSign = () => {
+    setDocumentToSign(null);
   };
 
   const generatePermitId = () => {
@@ -159,7 +170,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
 
       if (permitError) throw permitError;
 
-      const fileUrls: Array<{ name: string; url: string; size: number; type: string }> = [];
+      const fileUrls: Array<{ name: string; url: string; size: number; type: string; documentType: string }> = [];
 
       if (uploadedFiles.length > 0) {
         for (const file of uploadedFiles) {
@@ -186,14 +197,43 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
             url: urlData.publicUrl,
             size: file.size,
             type: file.type,
+            documentType: 'general',
           });
         }
+      }
 
+      if (documentToSign) {
+        const filePath = `permit-documents/${permitData.id}/${documentToSign.name}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('permit-pdfs')
+          .upload(filePath, documentToSign, {
+            cacheControl: '3600',
+            upsert: false,
+          });
+
+        if (!uploadError) {
+          const { data: urlData } = supabase.storage
+            .from('permit-pdfs')
+            .getPublicUrl(filePath);
+
+          fileUrls.push({
+            name: documentToSign.name,
+            url: urlData.publicUrl,
+            size: documentToSign.size,
+            type: documentToSign.type,
+            documentType: 'to_sign',
+          });
+        }
+      }
+
+      if (fileUrls.length > 0) {
         const documentInserts = fileUrls.map((fileInfo) => ({
           permit_id: permitData.id,
-          document_type: 'permit_document',
+          document_type: fileInfo.documentType,
           file_name: fileInfo.name,
           file_url: fileInfo.url,
+          uploaded_after_approval: false,
         }));
 
         const { error: docError } = await supabase.from('permit_documents').insert(documentInserts);
@@ -657,7 +697,8 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                 </ul>
               </div>
 
-              <div className="border border-gray-200 rounded-md p-4">
+              <div className="border border-gray-200 rounded-md p-4 mb-4">
+                <h3 className="text-xs font-semibold text-gray-900 mb-3">General Documents</h3>
                 <label className="flex flex-col items-center justify-center gap-2 px-3 py-5 border-2 border-dashed border-gray-300 rounded-md cursor-pointer hover:bg-gray-50 transition-colors">
                   <Upload size={24} className="text-gray-400" />
                   <div className="text-center">
@@ -704,23 +745,66 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                   </div>
                 )}
               </div>
-            </div>
 
-            <div>
-              <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-md border border-gray-200">
-                <input
-                  type="checkbox"
-                  id="requiresSignature"
-                  checked={requiresSignature}
-                  onChange={(e) => setRequiresSignature(e.target.checked)}
-                  className="w-3.5 h-3.5 text-[#0072BC] border-gray-300 rounded focus:ring-[#0072BC] flex-shrink-0"
-                />
-                <label htmlFor="requiresSignature" className="flex-1 cursor-pointer">
-                  <span className="text-xs font-medium text-gray-900">Sign this document</span>
-                  <span className="text-[10px] text-gray-600 ml-1">
-                    (When checked, the approver will be required to provide a signature once they have approved this permit.)
-                  </span>
-                </label>
+              <div className="mb-4">
+                <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-md border border-gray-200 mb-3">
+                  <input
+                    type="checkbox"
+                    id="requiresSignature"
+                    checked={requiresSignature}
+                    onChange={(e) => setRequiresSignature(e.target.checked)}
+                    className="w-3.5 h-3.5 text-[#0072BC] border-gray-300 rounded focus:ring-[#0072BC] flex-shrink-0"
+                  />
+                  <label htmlFor="requiresSignature" className="flex-1 cursor-pointer">
+                    <span className="text-xs font-medium text-gray-900">Signature Required</span>
+                    <span className="text-[10px] text-gray-600 ml-1">
+                      (Check this if you need to upload a document that requires a signature)
+                    </span>
+                  </label>
+                </div>
+
+                <div className={`border border-gray-200 rounded-md p-4 transition-opacity ${!requiresSignature ? 'opacity-50 bg-gray-50' : ''}`}>
+                  <h3 className="text-xs font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    Document to Sign
+                    {!requiresSignature && <Lock size={14} className="text-gray-400" />}
+                  </h3>
+                  <label className={`flex flex-col items-center justify-center gap-2 px-3 py-5 border-2 border-dashed border-gray-300 rounded-md ${requiresSignature ? 'cursor-pointer hover:bg-gray-50' : 'cursor-not-allowed'} transition-colors`}>
+                    <Upload size={24} className="text-gray-400" />
+                    <div className="text-center">
+                      <span className="text-xs font-medium text-gray-700">Choose Document</span>
+                      <p className="text-[10px] text-gray-500 mt-0.5">PDF only - Single file</p>
+                    </div>
+                    <input
+                      type="file"
+                      accept=".pdf"
+                      onChange={handleDocumentToSignChange}
+                      disabled={!requiresSignature}
+                      className="hidden"
+                    />
+                  </label>
+
+                  {documentToSign && (
+                    <div className="mt-3">
+                      <p className="text-xs font-medium text-gray-700 mb-2">Selected Document</p>
+                      <div className="flex items-center justify-between p-2 bg-gray-50 border border-gray-200 rounded-md">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <FileText size={14} className="text-gray-400 flex-shrink-0" />
+                          <span className="text-xs text-gray-700 truncate">{documentToSign.name}</span>
+                          <span className="text-[10px] text-gray-500 flex-shrink-0">
+                            ({(documentToSign.size / 1024).toFixed(1)} KB)
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleRemoveDocumentToSign}
+                          className="text-red-600 hover:text-red-800 text-xs font-medium ml-2 flex-shrink-0"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 

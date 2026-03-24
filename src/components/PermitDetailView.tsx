@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, CheckCircle, XCircle, FileText, Clock, Eye, PlusCircle, CreditCard as Edit2, AlertCircle, Download } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, FileText, Clock, Eye, PlusCircle, CreditCard as Edit2, AlertCircle, Download, Upload } from 'lucide-react';
 import { supabase, Permit, PermitDocument, PermitAuditLog } from '../lib/supabase';
 import { SignaturePad, SignaturePadRef } from './SignaturePad';
 import { generatePermitPDF, downloadPDF } from '../services/pdfGenerator';
@@ -36,6 +36,9 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const { userName } = useAuth();
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [additionalFiles, setAdditionalFiles] = useState<File[]>([]);
+  const [uploadingFiles, setUploadingFiles] = useState(false);
 
   useEffect(() => {
     fetchPermitDetails();
@@ -468,6 +471,87 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
 
   const handleEditDateChange = (name: string, value: string) => {
     setEditFormData((prev: any) => ({ ...prev, [name]: value }));
+  };
+
+  const handleAdditionalFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setAdditionalFiles(Array.from(e.target.files));
+    }
+  };
+
+  const handleRemoveAdditionalFile = (index: number) => {
+    setAdditionalFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleUploadAdditionalFiles = async () => {
+    if (!permit || additionalFiles.length === 0) return;
+    setUploadingFiles(true);
+
+    try {
+      const fileUrls: Array<{ name: string; url: string; documentType: string }> = [];
+
+      for (const file of additionalFiles) {
+        const filePath = `permit-documents/${permit.id}/${Date.now()}_${file.name}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('permit-pdfs')
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: false,
+          });
+
+        if (uploadError) {
+          console.error('Error uploading file:', uploadError);
+          continue;
+        }
+
+        const { data: urlData } = supabase.storage
+          .from('permit-pdfs')
+          .getPublicUrl(filePath);
+
+        fileUrls.push({
+          name: file.name,
+          url: urlData.publicUrl,
+          documentType: 'general',
+        });
+      }
+
+      if (fileUrls.length > 0) {
+        const documentInserts = fileUrls.map((fileInfo) => ({
+          permit_id: permit.id,
+          document_type: fileInfo.documentType,
+          file_name: fileInfo.name,
+          file_url: fileInfo.url,
+          uploaded_after_approval: true,
+        }));
+
+        const { error: docError } = await supabase.from('permit_documents').insert(documentInserts);
+
+        if (docError) throw docError;
+
+        await supabase.from('permit_audit_log').insert([
+          {
+            permit_id: permit.id,
+            action: 'Documents Added',
+            performed_by: userName || 'User',
+            notes: `Uploaded ${fileUrls.length} additional file(s) after approval`,
+          },
+        ]);
+      }
+
+      setShowUploadModal(false);
+      setAdditionalFiles([]);
+      await fetchPermitDetails();
+
+      setSuccessMessage('Files uploaded successfully');
+      setShowSuccessToast(true);
+      setTimeout(() => setShowSuccessToast(false), 3000);
+    } catch (error) {
+      console.error('Error uploading additional files:', error);
+      alert('Error uploading files. Please try again.');
+    } finally {
+      setUploadingFiles(false);
+    }
   };
 
   const handleDownloadPDF = () => {
@@ -1055,26 +1139,84 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
 
                 {documents.length > 0 && (
                   <div>
-                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Uploaded Documents</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {documents.map((doc) => (
-                        <button
-                          key={doc.id}
-                          onClick={() => setPreviewDocument({
-                            url: doc.file_url,
-                            name: doc.file_name,
-                            type: doc.file_name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'
-                          })}
-                          className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left w-full"
-                        >
-                          <Eye size={20} className="text-[#0072BC]" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 truncate">{doc.file_name}</p>
-                            <p className="text-xs text-gray-500">{doc.document_type.replace(/_/g, ' ')}</p>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
+                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Documents</h2>
+
+                    {documents.filter(doc => doc.document_type === 'general' && !doc.uploaded_after_approval).length > 0 && (
+                      <div className="mb-6">
+                        <h3 className="text-sm font-semibold text-gray-700 mb-3">General Documents</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {documents.filter(doc => doc.document_type === 'general' && !doc.uploaded_after_approval).map((doc) => (
+                            <button
+                              key={doc.id}
+                              onClick={() => setPreviewDocument({
+                                url: doc.file_url,
+                                name: doc.file_name,
+                                type: doc.file_name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'
+                              })}
+                              className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left w-full"
+                            >
+                              <Eye size={20} className="text-[#0072BC]" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 truncate">{doc.file_name}</p>
+                                <p className="text-xs text-gray-500">Initial upload</p>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {documents.filter(doc => doc.document_type === 'to_sign' || doc.document_type === 'signed').length > 0 && (
+                      <div className="mb-6">
+                        <h3 className="text-sm font-semibold text-gray-700 mb-3">Documents Requiring Signature</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {documents.filter(doc => doc.document_type === 'to_sign' || doc.document_type === 'signed').map((doc) => (
+                            <button
+                              key={doc.id}
+                              onClick={() => setPreviewDocument({
+                                url: doc.file_url,
+                                name: doc.file_name,
+                                type: doc.file_name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'
+                              })}
+                              className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left w-full"
+                            >
+                              <Eye size={20} className="text-[#0072BC]" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 truncate">{doc.file_name}</p>
+                                <p className="text-xs text-gray-500">
+                                  {doc.document_type === 'signed' ? 'Signed document' : 'Awaiting signature'}
+                                </p>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {documents.filter(doc => doc.uploaded_after_approval).length > 0 && (
+                      <div>
+                        <h3 className="text-sm font-semibold text-gray-700 mb-3">Additional Files (Post-Approval)</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {documents.filter(doc => doc.uploaded_after_approval).map((doc) => (
+                            <button
+                              key={doc.id}
+                              onClick={() => setPreviewDocument({
+                                url: doc.file_url,
+                                name: doc.file_name,
+                                type: doc.file_name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'
+                              })}
+                              className="flex items-center gap-3 p-3 border border-blue-200 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors text-left w-full"
+                            >
+                              <Eye size={20} className="text-[#0072BC]" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 truncate">{doc.file_name}</p>
+                                <p className="text-xs text-blue-700">Uploaded after approval</p>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -1157,6 +1299,21 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                         </>
                       )}
                     </div>
+
+                    {permit.status === 'Active' && (
+                      <div className="mt-4 pt-4 border-t border-gray-300">
+                        <button
+                          onClick={() => setShowUploadModal(true)}
+                          className="w-full flex items-center justify-center gap-2 bg-[#0072BC] text-white px-4 py-2 rounded-lg hover:bg-[#005a94] transition-colors"
+                        >
+                          <Upload size={18} />
+                          Upload Additional Files
+                        </button>
+                        <p className="text-xs text-gray-600 mt-2 text-center">
+                          Add additional documents to this approved permit
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1375,6 +1532,84 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
             <div className="w-16 h-16 border-4 border-gray-200 border-t-[#0072BC] rounded-full animate-spin mx-auto mb-4" />
             <p className="text-gray-900 font-medium text-lg mb-2">Processing...</p>
             <p className="text-gray-600 text-sm">Please wait while we process your request</p>
+          </div>
+        </div>
+      )}
+
+      {showUploadModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Upload Additional Files</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Upload additional documents for this approved permit. These files will be tracked separately and can be synced to SharePoint.
+            </p>
+
+            <div className="border border-gray-200 rounded-md p-4 mb-4">
+              <label className="flex flex-col items-center justify-center gap-2 px-3 py-5 border-2 border-dashed border-gray-300 rounded-md cursor-pointer hover:bg-gray-50 transition-colors">
+                <Upload size={24} className="text-gray-400" />
+                <div className="text-center">
+                  <span className="text-sm font-medium text-gray-700">Choose Files</span>
+                  <p className="text-xs text-gray-500 mt-0.5">Select multiple images or PDFs</p>
+                </div>
+                <input
+                  type="file"
+                  accept="image/*,.pdf"
+                  multiple
+                  onChange={handleAdditionalFilesChange}
+                  className="hidden"
+                />
+              </label>
+
+              {additionalFiles.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-sm font-medium text-gray-700 mb-2">
+                    Selected Files ({additionalFiles.length})
+                  </p>
+                  <div className="space-y-2">
+                    {additionalFiles.map((file, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-2 bg-gray-50 border border-gray-200 rounded-md"
+                      >
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <FileText size={16} className="text-gray-400 flex-shrink-0" />
+                          <span className="text-sm text-gray-700 truncate">{file.name}</span>
+                          <span className="text-xs text-gray-500 flex-shrink-0">
+                            ({(file.size / 1024).toFixed(1)} KB)
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveAdditionalFile(index)}
+                          className="text-red-600 hover:text-red-800 text-sm font-medium ml-2 flex-shrink-0"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowUploadModal(false);
+                  setAdditionalFiles([]);
+                }}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUploadAdditionalFiles}
+                disabled={additionalFiles.length === 0 || uploadingFiles}
+                className="px-4 py-2 bg-[#0072BC] text-white rounded-lg hover:bg-[#005a94] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {uploadingFiles ? 'Uploading...' : 'Upload Files'}
+              </button>
+            </div>
           </div>
         </div>
       )}
