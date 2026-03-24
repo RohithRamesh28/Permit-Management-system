@@ -11,7 +11,7 @@
       - `date_of_request` (date) - When permit was requested
       - `date_of_project_commencement` (text) - Commencement date
       - `estimated_date_of_completion` (date) - Estimated completion
-      - `type_of_permit` (text) - Electrical, Building, General
+      - `type_of_permit` (text) - Electrical Permit, General Permit, Specialty/Tower Permit
       - `utility_provider` (text, nullable) - Only for Electrical permits
       - `state` (text) - State where work is performed
       - `county_or_parish` (text) - County or parish

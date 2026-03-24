@@ -181,9 +181,9 @@ export default function PermitListView({ onNavigate, onSelectPermit }: PermitLis
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent appearance-none bg-white"
               >
                 <option>All</option>
-                <option>Electrical</option>
-                <option>Building</option>
-                <option>General</option>
+                <option>Electrical Permit</option>
+                <option>Specialty/Tower Permit</option>
+                <option>General Permit</option>
               </select>
             </div>
           </div>

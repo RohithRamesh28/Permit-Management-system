@@ -138,7 +138,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
             date_of_project_commencement: formData.date_of_project_commencement,
             estimated_date_of_completion: formData.estimated_date_of_completion,
             type_of_permit: formData.type_of_permit,
-            utility_provider: formData.type_of_permit === 'Electrical' ? formData.utility_provider : null,
+            utility_provider: formData.type_of_permit === 'Electrical Permit' ? formData.utility_provider : null,
             state: formData.state,
             county_or_parish: formData.county_or_parish,
             city: formData.city,
@@ -441,13 +441,13 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
                   >
                     <option value="">Select type</option>
-                    <option value="Electrical">Electrical</option>
-                    <option value="Building">Building</option>
-                    <option value="General">General</option>
+                    <option value="Electrical Permit">Electrical Permit</option>
+                    <option value="Specialty/Tower Permit">Specialty/Tower Permit</option>
+                    <option value="General Permit">General Permit</option>
                   </select>
                 </div>
 
-                {formData.type_of_permit === 'Electrical' ? (
+                {formData.type_of_permit === 'Electrical Permit' ? (
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">
                       Utility Provider <span className="text-red-500">*</span>
