@@ -77,13 +77,32 @@ Deno.serve(async (req: Request) => {
       name: list.name,
       displayName: list.displayName,
       description: list.description,
+      itemCount: list.list?.template || 0,
     }));
+
+    const countsPromises = lists.map(async (list: any) => {
+      try {
+        const countUrl = `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${list.id}/items/$count`;
+        const countResponse = await fetch(countUrl, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (countResponse.ok) {
+          const count = await countResponse.text();
+          return { ...list, itemCount: parseInt(count) };
+        }
+      } catch (e) {
+        console.error(`Failed to get count for ${list.name}:`, e);
+      }
+      return list;
+    });
+
+    const listsWithCounts = await Promise.all(countsPromises);
 
     return new Response(
       JSON.stringify({
         siteId: siteId,
-        totalLists: lists.length,
-        lists: lists,
+        totalLists: listsWithCounts.length,
+        lists: listsWithCounts,
       }, null, 2),
       {
         headers: {

@@ -6,7 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-const SAMPLE_DATA_MODE = true;
+const SAMPLE_DATA_MODE = false;
 
 const LICENSE_LISTS = {
   state_contractor: "35c9c84e-f043-4031-b8ef-b1090afef0a5",
@@ -261,7 +261,7 @@ Deno.serve(async (req: Request) => {
     const tenantId = "3596b7c3-9b4b-4ef8-9dde-39825373af28";
     const clientId = "c01be167-54b5-4e66-a8a1-8c5303b3430b";
     const clientSecret = "x6k8Q~AEdheL6OYH43fbKGbqQTK9GunLtH.e5aw~";
-    const siteUrl = "https://ontivity.sharepoint.com/sites/OntivityJobManagement";
+    const siteUrl = "https://ontivity.sharepoint.com/sites/OntivityLicensing";
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
