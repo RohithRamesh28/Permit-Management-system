@@ -99,6 +99,8 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [documentToSign, setDocumentToSign] = useState<File | null>(null);
   const [requiresSignature, setRequiresSignature] = useState(false);
+  const [sendToQpForSignature, setSendToQpForSignature] = useState(false);
+  const [sendToApproverForSignature, setSendToApproverForSignature] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [selectedApprover, setSelectedApprover] = useState<ApproverInfo | null>(null);
   const [approverName, setApproverName] = useState<string>('');
@@ -266,6 +268,12 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
         return;
       }
 
+      if (!documentToSign) {
+        alert('Please upload a permitting application document.');
+        setSubmitting(false);
+        return;
+      }
+
       const permitId = generatePermitId();
 
       const permitJurisdiction = permitLevel === "State"
@@ -303,6 +311,8 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
             detailed_sow: formData.detailed_sow,
             status: 'Pending Approval',
             requires_signature: requiresSignature,
+            send_to_qp_for_signature: sendToQpForSignature,
+            send_to_approver_for_signature: sendToApproverForSignature,
             qp_name: qpName,
             qp_email: qpEmail,
             license_list_used: licenseListUsed,
@@ -927,39 +937,22 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
               </div>
 
               <div className="mb-4">
-                <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-md border border-gray-200 mb-3">
-                  <input
-                    type="checkbox"
-                    id="requiresSignature"
-                    checked={requiresSignature}
-                    onChange={(e) => setRequiresSignature(e.target.checked)}
-                    className="w-3.5 h-3.5 text-[#0072BC] border-gray-300 rounded focus:ring-[#0072BC] flex-shrink-0"
-                  />
-                  <label htmlFor="requiresSignature" className="flex-1 cursor-pointer">
-                    <span className="text-xs font-medium text-gray-900">Signature Required</span>
-                    <span className="text-[10px] text-gray-600 ml-1">
-                      (Check this if you need to upload a document that requires a signature)
-                    </span>
-                  </label>
-                </div>
-
-                <div className={`border border-gray-200 rounded-md p-4 transition-opacity ${!requiresSignature ? 'opacity-50 bg-gray-50' : ''}`}>
-                  <h3 className="text-xs font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                    Permitting Application
-                    {!requiresSignature && <Lock size={14} className="text-gray-400" />}
+                <div className="border border-gray-200 rounded-md p-4">
+                  <h3 className="text-xs font-semibold text-gray-900 mb-3">
+                    Permitting Application <span className="text-red-500">*</span>
                   </h3>
-                  <label className={`flex flex-col items-center justify-center gap-2 px-3 py-5 border-2 border-dashed border-gray-300 rounded-md ${requiresSignature ? 'cursor-pointer hover:bg-gray-50' : 'cursor-not-allowed'} transition-colors`}>
+                  <label className="flex flex-col items-center justify-center gap-2 px-3 py-5 border-2 border-dashed border-gray-300 rounded-md cursor-pointer hover:bg-gray-50 transition-colors">
                     <Upload size={24} className="text-gray-400" />
                     <div className="text-center">
                       <span className="text-xs font-medium text-gray-700">Choose Document</span>
-                      <p className="text-[10px] text-gray-500 mt-0.5">PDF only - Single file</p>
+                      <p className="text-[10px] text-gray-500 mt-0.5">PDF only - Single file (Required)</p>
                     </div>
                     <input
                       type="file"
                       accept=".pdf"
                       onChange={handleDocumentToSignChange}
-                      disabled={!requiresSignature}
                       className="hidden"
+                      required
                     />
                   </label>
 
@@ -982,6 +975,68 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                           Remove
                         </button>
                       </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-4">
+                  <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-md border border-gray-200 mb-3">
+                    <input
+                      type="checkbox"
+                      id="requiresSignature"
+                      checked={requiresSignature}
+                      onChange={(e) => {
+                        setRequiresSignature(e.target.checked);
+                        if (!e.target.checked) {
+                          setSendToQpForSignature(false);
+                          setSendToApproverForSignature(false);
+                        }
+                      }}
+                      className="w-3.5 h-3.5 text-[#0072BC] border-gray-300 rounded focus:ring-[#0072BC] flex-shrink-0"
+                    />
+                    <label htmlFor="requiresSignature" className="flex-1 cursor-pointer">
+                      <span className="text-xs font-medium text-gray-900">Require Signature</span>
+                      <span className="text-[10px] text-gray-600 ml-1">
+                        (Check this if the document needs to be signed)
+                      </span>
+                    </label>
+                  </div>
+
+                  {requiresSignature && (
+                    <div className="ml-6 space-y-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                      <p className="text-xs font-medium text-blue-900 mb-2">Send signature request to:</p>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="sendToQpForSignature"
+                          checked={sendToQpForSignature}
+                          onChange={(e) => setSendToQpForSignature(e.target.checked)}
+                          className="w-3.5 h-3.5 text-[#0072BC] border-gray-300 rounded focus:ring-[#0072BC] flex-shrink-0"
+                        />
+                        <label htmlFor="sendToQpForSignature" className="text-xs text-gray-700 cursor-pointer">
+                          Qualified Person (QP)
+                        </label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="sendToApproverForSignature"
+                          checked={sendToApproverForSignature}
+                          onChange={(e) => setSendToApproverForSignature(e.target.checked)}
+                          className="w-3.5 h-3.5 text-[#0072BC] border-gray-300 rounded focus:ring-[#0072BC] flex-shrink-0"
+                        />
+                        <label htmlFor="sendToApproverForSignature" className="text-xs text-gray-700 cursor-pointer">
+                          Approver
+                        </label>
+                      </div>
+                      {(sendToQpForSignature || sendToApproverForSignature) && (
+                        <div className="mt-3 pt-3 border-t border-blue-300">
+                          <p className="text-[10px] text-blue-800 flex items-center gap-1">
+                            <CheckCircle size={12} className="text-blue-600" />
+                            Email notifications will be sent to selected recipients
+                          </p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
