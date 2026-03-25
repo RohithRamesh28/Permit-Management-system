@@ -474,7 +474,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
                     Requestor <span className="text-red-500">*</span>
@@ -508,56 +508,39 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     <option value="Electronic Manager">Electronic Manager</option>
                   </select>
                 </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
-                    Qualified Person (Manager) <span className="text-red-500">*</span>
-                    {qpManagerLoading && <Loader2 size={12} className="text-blue-500 animate-spin" />}
-                  </label>
-                  <input
-                    type="text"
-                    value={qpInfo.managerName || 'Not found'}
-                    readOnly
-                    disabled
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed"
-                  />
-                  {qpInfo.managerEmail && (
-                    <p className="text-[10px] text-gray-500 mt-0.5">{qpInfo.managerEmail}</p>
-                  )}
-                </div>
               </div>
 
               <div className="border-t border-gray-200 pt-4 pb-4">
                 <label className="block text-xs font-medium text-gray-700 mb-2">
                   Permit Level <span className="text-red-500">*</span>
                 </label>
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => handlePermitLevelChange("State")}
-                    className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                      permitLevel === "State"
-                        ? "bg-blue-600 text-white"
-                        : "bg-white text-gray-600 border border-gray-300 hover:bg-gray-50"
-                    }`}
-                  >
-                    State
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handlePermitLevelChange("CountyCity")}
-                    className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                      permitLevel === "CountyCity"
-                        ? "bg-blue-600 text-white"
-                        : "bg-white text-gray-600 border border-gray-300 hover:bg-gray-50"
-                    }`}
-                  >
-                    County / City
-                  </button>
+                <div className="flex gap-6">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="permitLevel"
+                      value="State"
+                      checked={permitLevel === "State"}
+                      onChange={() => handlePermitLevelChange("State")}
+                      className="w-4 h-4 text-[#0072BC] border-gray-300 focus:ring-[#0072BC]"
+                    />
+                    <span className="text-sm font-medium text-gray-700">State</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="permitLevel"
+                      value="CountyCity"
+                      checked={permitLevel === "CountyCity"}
+                      onChange={() => handlePermitLevelChange("CountyCity")}
+                      className="w-4 h-4 text-[#0072BC] border-gray-300 focus:ring-[#0072BC]"
+                    />
+                    <span className="text-sm font-medium text-gray-700">County / City</span>
+                  </label>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
                     Ontivity Project Number <span className="text-red-500">*</span>
@@ -610,7 +593,9 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     </select>
                   )}
                 </div>
+              </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
                     Date of Project Commencement <span className="text-red-500">*</span>
