@@ -263,6 +263,8 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
     setValidationError(null);
     setSubmitting(true);
 
+    console.log('Submit handler called', { documentToSign, requiresSignature, sendToQpForSignature, sendToApproverForSignature });
+
     try {
       if (!qpName || !qpEmail) {
         setValidationError('No valid license found for this permit type, location, and performing entity. Please verify your selections or contact administrator.');
@@ -273,6 +275,13 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
 
       if (!documentToSign) {
         setValidationError('Please upload a Permitting Application document to continue. This document is required for approval.');
+        setSubmitting(false);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+
+      if (requiresSignature && !sendToQpForSignature && !sendToApproverForSignature) {
+        setValidationError('You have enabled "Require Signature" but have not selected any recipients. Please select at least one recipient (Qualified Person or Approver) to send the signature request to.');
         setSubmitting(false);
         window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
