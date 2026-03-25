@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, CheckCircle, XCircle, FileText, Clock, Eye, PlusCircle, CreditCard as Edit2, AlertCircle, Download, Upload } from 'lucide-react';
 import { supabase, Permit, PermitDocument, PermitAuditLog } from '../lib/supabase';
 import { SignaturePad, SignaturePadRef } from './SignaturePad';
-import { generatePermitPDF, downloadPDF, mergePDFs, embedSignatureInPDF } from '../services/pdfGenerator';
+import { generatePermitPDF, downloadPDF, mergePDFs, embedMultipleSignaturesInPDF, SignatureData } from '../services/pdfGenerator';
 import DocumentPreviewModal from './DocumentPreviewModal';
 import PdfSigningModal from './PdfSigningModal';
 import SearchableDropdown from './SearchableDropdown';
@@ -119,23 +119,24 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
     }
   };
 
-  const handlePdfSigningApprove = async (signatureData: string, signerNameFromModal: string, position: { x: number; y: number }, size: { width: number; height: number }) => {
-    setSignerName(signerNameFromModal);
-    setSignaturePosition(position);
+  const handlePdfSigningApprove = async (signatures: SignatureData[]) => {
+    if (signatures.length === 0) return;
+
+    const firstSignature = signatures[0];
+    setSignerName(firstSignature.signerName);
+    setSignaturePosition(firstSignature.position);
     setShowPdfSignModal(false);
 
     const documentToSign = documents.find(doc => doc.document_type === 'to_sign');
     if (documentToSign) {
       try {
-        const signedPdfBlob = await embedSignatureInPDF(
+        const signedPdfBlob = await embedMultipleSignaturesInPDF(
           documentToSign.file_url,
-          signatureData,
-          position,
-          size
+          signatures
         );
 
         const signedFileName = `signed_${Date.now()}_${documentToSign.file_name}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from('permit-pdfs')
           .upload(signedFileName, signedPdfBlob, {
             contentType: 'application/pdf',
@@ -152,7 +153,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
           .from('permits')
           .update({
             signed_document_url: publicUrl,
-            signature_data_url: signatureData
+            signature_data_url: firstSignature.signatureData
           })
           .eq('id', permitId);
       } catch (error) {
@@ -161,7 +162,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
     }
 
     setPdfToSign(null);
-    await handleApprove(signatureData);
+    await handleApprove(firstSignature.signatureData);
   };
 
   const handleRejectClick = () => {
@@ -1167,88 +1168,112 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                   </>
                 )}
 
-                {documents.length > 0 && (
-                  <div>
-                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Documents</h2>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900 mb-4">Documents</h2>
 
-                    {documents.filter(doc => doc.document_type === 'general' && !doc.uploaded_after_approval).length > 0 && (
-                      <div className="mb-6">
-                        <h3 className="text-sm font-semibold text-gray-700 mb-3">General Documents</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {documents.filter(doc => doc.document_type === 'general' && !doc.uploaded_after_approval).map((doc) => (
-                            <button
-                              key={doc.id}
-                              onClick={() => setPreviewDocument({
-                                url: doc.file_url,
-                                name: doc.file_name,
-                                type: doc.file_name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'
-                              })}
-                              className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left w-full"
-                            >
-                              <Eye size={20} className="text-[#0072BC]" />
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-gray-900 truncate">{doc.file_name}</p>
-                                <p className="text-xs text-gray-500">Initial upload</p>
-                              </div>
-                            </button>
-                          ))}
-                        </div>
+                  {permit.signed_pdf_url && (
+                    <div className="mb-6">
+                      <h3 className="text-sm font-semibold text-gray-700 mb-3">Permit Application</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <button
+                          onClick={() => setPreviewDocument({
+                            url: permit.signed_pdf_url!,
+                            name: 'Permit Application.pdf',
+                            type: 'application/pdf'
+                          })}
+                          className="flex items-center gap-3 p-3 border-2 border-[#0072BC] bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors text-left w-full"
+                        >
+                          <FileText size={20} className="text-[#0072BC]" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">Permit Application</p>
+                            <p className="text-xs text-[#0072BC]">Generated permit form</p>
+                          </div>
+                        </button>
                       </div>
-                    )}
+                    </div>
+                  )}
 
-                    {documents.filter(doc => doc.document_type === 'to_sign' || doc.document_type === 'signed').length > 0 && (
-                      <div className="mb-6">
-                        <h3 className="text-sm font-semibold text-gray-700 mb-3">Documents Requiring Signature</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {documents.filter(doc => doc.document_type === 'to_sign' || doc.document_type === 'signed').map((doc) => (
-                            <button
-                              key={doc.id}
-                              onClick={() => setPreviewDocument({
-                                url: doc.file_url,
-                                name: doc.file_name,
-                                type: doc.file_name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'
-                              })}
-                              className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left w-full"
-                            >
-                              <Eye size={20} className="text-[#0072BC]" />
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-gray-900 truncate">{doc.file_name}</p>
-                                <p className="text-xs text-gray-500">
-                                  {doc.document_type === 'signed' ? 'Signed document' : 'Awaiting signature'}
-                                </p>
-                              </div>
-                            </button>
-                          ))}
-                        </div>
+                  {documents.filter(doc => doc.document_type === 'to_sign' || doc.document_type === 'signed').length > 0 && (
+                    <div className="mb-6">
+                      <h3 className="text-sm font-semibold text-gray-700 mb-3">Documents Requiring Signature</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {documents.filter(doc => doc.document_type === 'to_sign' || doc.document_type === 'signed').map((doc) => (
+                          <button
+                            key={doc.id}
+                            onClick={() => setPreviewDocument({
+                              url: doc.file_url,
+                              name: doc.file_name,
+                              type: doc.file_name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'
+                            })}
+                            className="flex items-center gap-3 p-3 border border-amber-200 bg-amber-50 rounded-lg hover:bg-amber-100 transition-colors text-left w-full"
+                          >
+                            <Eye size={20} className="text-amber-600" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-900 truncate">{doc.file_name}</p>
+                              <p className="text-xs text-amber-700">
+                                {doc.document_type === 'signed' ? 'Signed document' : 'Awaiting signature'}
+                              </p>
+                            </div>
+                          </button>
+                        ))}
                       </div>
-                    )}
+                    </div>
+                  )}
 
-                    {documents.filter(doc => doc.uploaded_after_approval).length > 0 && (
-                      <div>
-                        <h3 className="text-sm font-semibold text-gray-700 mb-3">Additional Files (Post-Approval)</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {documents.filter(doc => doc.uploaded_after_approval).map((doc) => (
-                            <button
-                              key={doc.id}
-                              onClick={() => setPreviewDocument({
-                                url: doc.file_url,
-                                name: doc.file_name,
-                                type: doc.file_name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'
-                              })}
-                              className="flex items-center gap-3 p-3 border border-blue-200 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors text-left w-full"
-                            >
-                              <Eye size={20} className="text-[#0072BC]" />
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-gray-900 truncate">{doc.file_name}</p>
-                                <p className="text-xs text-blue-700">Uploaded after approval</p>
-                              </div>
-                            </button>
-                          ))}
-                        </div>
+                  {documents.filter(doc => doc.document_type === 'general' && !doc.uploaded_after_approval).length > 0 && (
+                    <div className="mb-6">
+                      <h3 className="text-sm font-semibold text-gray-700 mb-3">General Documents</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {documents.filter(doc => doc.document_type === 'general' && !doc.uploaded_after_approval).map((doc) => (
+                          <button
+                            key={doc.id}
+                            onClick={() => setPreviewDocument({
+                              url: doc.file_url,
+                              name: doc.file_name,
+                              type: doc.file_name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'
+                            })}
+                            className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left w-full"
+                          >
+                            <Eye size={20} className="text-[#0072BC]" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-900 truncate">{doc.file_name}</p>
+                              <p className="text-xs text-gray-500">Uploaded document</p>
+                            </div>
+                          </button>
+                        ))}
                       </div>
-                    )}
-                  </div>
-                )}
+                    </div>
+                  )}
+
+                  {documents.filter(doc => doc.uploaded_after_approval).length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-700 mb-3">Additional Files (Post-Approval)</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {documents.filter(doc => doc.uploaded_after_approval).map((doc) => (
+                          <button
+                            key={doc.id}
+                            onClick={() => setPreviewDocument({
+                              url: doc.file_url,
+                              name: doc.file_name,
+                              type: doc.file_name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'
+                            })}
+                            className="flex items-center gap-3 p-3 border border-green-200 bg-green-50 rounded-lg hover:bg-green-100 transition-colors text-left w-full"
+                          >
+                            <Eye size={20} className="text-green-600" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-900 truncate">{doc.file_name}</p>
+                              <p className="text-xs text-green-700">Uploaded after approval</p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {!permit.signed_pdf_url && documents.length === 0 && (
+                    <p className="text-sm text-gray-500 italic">No documents available</p>
+                  )}
+                </div>
               </div>
 
               <div className="space-y-6">

@@ -361,3 +361,38 @@ export const embedSignatureInPDF = async (
   const modifiedPdfBytes = await pdfDoc.save();
   return new Blob([modifiedPdfBytes], { type: 'application/pdf' });
 };
+
+export interface SignatureData {
+  signatureData: string;
+  signerName: string;
+  position: { x: number; y: number };
+  size: { width: number; height: number };
+}
+
+export const embedMultipleSignaturesInPDF = async (
+  pdfUrl: string,
+  signatures: SignatureData[]
+): Promise<Blob> => {
+  const response = await fetch(pdfUrl);
+  const pdfBytes = await response.arrayBuffer();
+  const pdfDoc = await PDFDocument.load(pdfBytes);
+
+  const pages = pdfDoc.getPages();
+  const firstPage = pages[0];
+  const { height: pageHeight } = firstPage.getSize();
+
+  for (const sig of signatures) {
+    const signatureImageBytes = await fetch(sig.signatureData).then(res => res.arrayBuffer());
+    const signatureImage = await pdfDoc.embedPng(signatureImageBytes);
+
+    firstPage.drawImage(signatureImage, {
+      x: sig.position.x,
+      y: pageHeight - sig.position.y - sig.size.height,
+      width: sig.size.width,
+      height: sig.size.height,
+    });
+  }
+
+  const modifiedPdfBytes = await pdfDoc.save();
+  return new Blob([modifiedPdfBytes], { type: 'application/pdf' });
+};

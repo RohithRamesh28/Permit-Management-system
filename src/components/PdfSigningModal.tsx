@@ -1,12 +1,20 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { X, CheckCircle, ZoomIn, ZoomOut, Type, PenTool, RotateCcw } from 'lucide-react';
+import { X, CheckCircle, ZoomIn, ZoomOut, Type, PenTool, RotateCcw, Copy, Plus, Trash2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+
+interface SignatureItem {
+  id: string;
+  dataUrl: string;
+  position: { x: number; y: number };
+  size: { width: number; height: number };
+  signerName: string;
+}
 
 interface PdfSigningModalProps {
   pdfUrl: string;
   pdfName: string;
   onClose: () => void;
-  onApprove: (signatureData: string, signerName: string, position: { x: number; y: number }, size: { width: number; height: number }) => void;
+  onApprove: (signatures: Array<{ signatureData: string; signerName: string; position: { x: number; y: number }; size: { width: number; height: number } }>) => void;
   signerName?: string;
 }
 
@@ -23,21 +31,25 @@ const SIGNATURE_FONTS = [
   { name: 'Kaushan Script', style: "'Kaushan Script', cursive" },
 ];
 
+const DEFAULT_SIGNATURE_SIZE = { width: 180, height: 60 };
+
 export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }: PdfSigningModalProps) {
   const { userName } = useAuth();
 
-  const [signatureDataUrl, setSignatureDataUrl] = useState<string>('');
-  const [signaturePosition, setSignaturePosition] = useState<{ x: number; y: number } | null>(null);
+  const [signatures, setSignatures] = useState<SignatureItem[]>([]);
+  const [activeSignatureId, setActiveSignatureId] = useState<string | null>(null);
   const [cursorPosition, setCursorPosition] = useState<{ x: number; y: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [signatureSize, setSignatureSize] = useState({ width: 180, height: 60 });
   const [showSignatureModal, setShowSignatureModal] = useState(false);
   const [pendingClickPosition, setPendingClickPosition] = useState<{ x: number; y: number } | null>(null);
   const [signatureTab, setSignatureTab] = useState<'type' | 'draw'>('type');
   const [typedName, setTypedName] = useState(userName || '');
   const [selectedFont, setSelectedFont] = useState(SIGNATURE_FONTS[0]);
-  const [signerNameForApproval, setSignerNameForApproval] = useState(userName || '');
+  const [createdSignatures, setCreatedSignatures] = useState<Array<{ dataUrl: string; signerName: string }>>([]);
+  const [selectedCreatedSignature, setSelectedCreatedSignature] = useState<number | null>(null);
+  const [pendingSignatureDataUrl, setPendingSignatureDataUrl] = useState<string>('');
+  const [pendingSignerName, setPendingSignerName] = useState<string>('');
 
   const pdfContainerRef = useRef<HTMLDivElement>(null);
   const pdfWrapperRef = useRef<HTMLDivElement>(null);
@@ -101,6 +113,8 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
     return canvas.toDataURL('image/png');
   }, []);
 
+  const generateId = () => `sig_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
   const handlePdfMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (showSignatureModal) return;
 
@@ -109,15 +123,25 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
 
     const rect = wrapper.getBoundingClientRect();
 
-    if (isDragging && signaturePosition) {
+    if (isDragging && activeSignatureId) {
+      const activeSignature = signatures.find(s => s.id === activeSignatureId);
+      if (!activeSignature) return;
+
       const newX = e.clientX - rect.left - dragOffset.x;
       const newY = e.clientY - rect.top - dragOffset.y;
 
-      setSignaturePosition({
-        x: Math.max(0, Math.min(newX, rect.width - signatureSize.width)),
-        y: Math.max(0, Math.min(newY, rect.height - signatureSize.height)),
-      });
-    } else if (!signaturePosition && signatureDataUrl) {
+      setSignatures(prev => prev.map(sig =>
+        sig.id === activeSignatureId
+          ? {
+              ...sig,
+              position: {
+                x: Math.max(0, Math.min(newX, rect.width - sig.size.width)),
+                y: Math.max(0, Math.min(newY, rect.height - sig.size.height)),
+              }
+            }
+          : sig
+      ));
+    } else if (pendingSignatureDataUrl) {
       setCursorPosition({
         x: e.clientX - rect.left,
         y: e.clientY - rect.top,
@@ -128,6 +152,9 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
   const handlePdfClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (showSignatureModal || isDragging) return;
 
+    const target = e.target as HTMLElement;
+    if (target.closest('.signature-item')) return;
+
     const wrapper = pdfWrapperRef.current;
     if (!wrapper) return;
 
@@ -135,24 +162,35 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
     const clickX = e.clientX - rect.left;
     const clickY = e.clientY - rect.top;
 
-    if (signatureDataUrl && !signaturePosition) {
-      setSignaturePosition({
-        x: clickX - signatureSize.width / 2,
-        y: clickY - signatureSize.height / 2,
-      });
+    if (pendingSignatureDataUrl) {
+      const newSignature: SignatureItem = {
+        id: generateId(),
+        dataUrl: pendingSignatureDataUrl,
+        position: {
+          x: clickX - DEFAULT_SIGNATURE_SIZE.width / 2,
+          y: clickY - DEFAULT_SIGNATURE_SIZE.height / 2,
+        },
+        size: { ...DEFAULT_SIGNATURE_SIZE },
+        signerName: pendingSignerName,
+      };
+      setSignatures(prev => [...prev, newSignature]);
+      setActiveSignatureId(newSignature.id);
+      setPendingSignatureDataUrl('');
+      setPendingSignerName('');
       setCursorPosition(null);
-    } else if (!signatureDataUrl) {
+    } else {
       setPendingClickPosition({ x: clickX, y: clickY });
       setShowSignatureModal(true);
       setTypedName(userName || '');
+      setSelectedCreatedSignature(null);
     }
   };
 
-  const handleSignatureMouseDown = (e: React.MouseEvent) => {
+  const handleSignatureMouseDown = (e: React.MouseEvent, signatureId: string) => {
     e.stopPropagation();
     e.preventDefault();
-    if (!signaturePosition) return;
 
+    setActiveSignatureId(signatureId);
     setIsDragging(true);
 
     const signatureElement = e.currentTarget.getBoundingClientRect();
@@ -162,18 +200,57 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
     });
   };
 
-  const handleIncreaseSize = () => {
-    setSignatureSize(prev => ({
-      width: Math.min(prev.width + 30, 350),
-      height: Math.min(prev.height + 10, 120),
-    }));
+  const handleIncreaseSize = (signatureId: string) => {
+    setSignatures(prev => prev.map(sig =>
+      sig.id === signatureId
+        ? {
+            ...sig,
+            size: {
+              width: Math.min(sig.size.width + 30, 350),
+              height: Math.min(sig.size.height + 10, 120),
+            }
+          }
+        : sig
+    ));
   };
 
-  const handleDecreaseSize = () => {
-    setSignatureSize(prev => ({
-      width: Math.max(prev.width - 30, 100),
-      height: Math.max(prev.height - 10, 35),
-    }));
+  const handleDecreaseSize = (signatureId: string) => {
+    setSignatures(prev => prev.map(sig =>
+      sig.id === signatureId
+        ? {
+            ...sig,
+            size: {
+              width: Math.max(sig.size.width - 30, 100),
+              height: Math.max(sig.size.height - 10, 35),
+            }
+          }
+        : sig
+    ));
+  };
+
+  const handleRemoveSignature = (signatureId: string) => {
+    setSignatures(prev => prev.filter(sig => sig.id !== signatureId));
+    if (activeSignatureId === signatureId) {
+      setActiveSignatureId(null);
+    }
+  };
+
+  const handleCopySignature = (signatureId: string) => {
+    const signatureToCopy = signatures.find(s => s.id === signatureId);
+    if (!signatureToCopy) return;
+
+    const newSignature: SignatureItem = {
+      id: generateId(),
+      dataUrl: signatureToCopy.dataUrl,
+      position: {
+        x: signatureToCopy.position.x + 20,
+        y: signatureToCopy.position.y + 20,
+      },
+      size: { ...signatureToCopy.size },
+      signerName: signatureToCopy.signerName,
+    };
+    setSignatures(prev => [...prev, newSignature]);
+    setActiveSignatureId(newSignature.id);
   };
 
   const handleMouseUp = useCallback(() => {
@@ -188,12 +265,19 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
   }, [isDragging, handleMouseUp]);
 
   const handleApprove = () => {
-    if (!signaturePosition) {
-      alert('Please place your signature on the document');
+    if (signatures.length === 0) {
+      alert('Please place at least one signature on the document');
       return;
     }
 
-    onApprove(signatureDataUrl, signerNameForApproval, signaturePosition, signatureSize);
+    const signatureData = signatures.map(sig => ({
+      signatureData: sig.dataUrl,
+      signerName: sig.signerName,
+      position: sig.position,
+      size: sig.size,
+    }));
+
+    onApprove(signatureData);
   };
 
   const handleDrawStart = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
@@ -288,6 +372,28 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
   };
 
   const handleApplySignature = () => {
+    if (selectedCreatedSignature !== null && createdSignatures[selectedCreatedSignature]) {
+      const selected = createdSignatures[selectedCreatedSignature];
+      if (pendingClickPosition) {
+        const newSignature: SignatureItem = {
+          id: generateId(),
+          dataUrl: selected.dataUrl,
+          position: {
+            x: pendingClickPosition.x - DEFAULT_SIGNATURE_SIZE.width / 2,
+            y: pendingClickPosition.y - DEFAULT_SIGNATURE_SIZE.height / 2,
+          },
+          size: { ...DEFAULT_SIGNATURE_SIZE },
+          signerName: selected.signerName,
+        };
+        setSignatures(prev => [...prev, newSignature]);
+        setActiveSignatureId(newSignature.id);
+      }
+      setShowSignatureModal(false);
+      setPendingClickPosition(null);
+      setSelectedCreatedSignature(null);
+      return;
+    }
+
     let dataUrl = '';
     let name = typedName || userName || '';
 
@@ -309,29 +415,42 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
       }
     }
 
-    setSignatureDataUrl(dataUrl);
-    setSignerNameForApproval(name);
+    setCreatedSignatures(prev => [...prev, { dataUrl, signerName: name }]);
 
     if (pendingClickPosition) {
-      setSignaturePosition({
-        x: pendingClickPosition.x - signatureSize.width / 2,
-        y: pendingClickPosition.y - signatureSize.height / 2,
-      });
+      const newSignature: SignatureItem = {
+        id: generateId(),
+        dataUrl,
+        position: {
+          x: pendingClickPosition.x - DEFAULT_SIGNATURE_SIZE.width / 2,
+          y: pendingClickPosition.y - DEFAULT_SIGNATURE_SIZE.height / 2,
+        },
+        size: { ...DEFAULT_SIGNATURE_SIZE },
+        signerName: name,
+      };
+      setSignatures(prev => [...prev, newSignature]);
+      setActiveSignatureId(newSignature.id);
     }
 
     setShowSignatureModal(false);
     setPendingClickPosition(null);
   };
 
-  const handleEditSignature = () => {
+  const handleCreateNewSignature = () => {
+    setPendingClickPosition(null);
     setShowSignatureModal(true);
-    setTypedName(signerNameForApproval || userName || '');
+    setTypedName(userName || '');
+    setSelectedCreatedSignature(null);
   };
 
-  const handleRemoveSignature = () => {
-    setSignatureDataUrl('');
-    setSignaturePosition(null);
-    setCursorPosition(null);
+  const handleUseExistingSignature = (index: number) => {
+    const existing = createdSignatures[index];
+    if (!existing) return;
+
+    setPendingSignatureDataUrl(existing.dataUrl);
+    setPendingSignerName(existing.signerName);
+    setShowSignatureModal(false);
+    setPendingClickPosition(null);
   };
 
   return (
@@ -341,9 +460,11 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
           <div>
             <h2 className="text-lg font-semibold text-gray-900">Sign and Approve Document</h2>
             <p className="text-sm text-gray-600 mt-1">
-              {signatureDataUrl
-                ? 'Drag to reposition your signature, or click "Edit" to change it.'
-                : 'Click anywhere on the document to add your signature.'}
+              {pendingSignatureDataUrl
+                ? 'Click anywhere on the document to place your signature.'
+                : signatures.length > 0
+                  ? 'Drag signatures to reposition. Click document to add more signatures.'
+                  : 'Click anywhere on the document to add your signature.'}
             </p>
           </div>
           <button
@@ -360,7 +481,7 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
             className="relative p-4 min-h-full flex justify-center"
             onMouseMove={handlePdfMouseMove}
             onClick={handlePdfClick}
-            style={{ cursor: signatureDataUrl ? (signaturePosition ? 'default' : 'crosshair') : 'crosshair' }}
+            style={{ cursor: pendingSignatureDataUrl ? 'crosshair' : 'default' }}
           >
             <div
               ref={pdfWrapperRef}
@@ -374,87 +495,125 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
                 style={{ height: '1100px', pointerEvents: 'none' }}
               />
 
-              {cursorPosition && signatureDataUrl && !signaturePosition && (
+              {cursorPosition && pendingSignatureDataUrl && (
                 <img
-                  src={signatureDataUrl}
+                  src={pendingSignatureDataUrl}
                   alt="Signature preview"
                   className="absolute pointer-events-none opacity-60 border-2 border-dashed border-blue-400"
                   style={{
-                    left: `${cursorPosition.x - signatureSize.width / 2}px`,
-                    top: `${cursorPosition.y - signatureSize.height / 2}px`,
-                    width: `${signatureSize.width}px`,
-                    height: `${signatureSize.height}px`,
+                    left: `${cursorPosition.x - DEFAULT_SIGNATURE_SIZE.width / 2}px`,
+                    top: `${cursorPosition.y - DEFAULT_SIGNATURE_SIZE.height / 2}px`,
+                    width: `${DEFAULT_SIGNATURE_SIZE.width}px`,
+                    height: `${DEFAULT_SIGNATURE_SIZE.height}px`,
                     objectFit: 'contain',
                   }}
                 />
               )}
 
-              {signaturePosition && signatureDataUrl && (
+              {signatures.map((signature) => (
                 <div
-                  className={`absolute ${isDragging ? 'cursor-grabbing' : 'cursor-grab'} group`}
+                  key={signature.id}
+                  className={`signature-item absolute ${isDragging && activeSignatureId === signature.id ? 'cursor-grabbing' : 'cursor-grab'} group`}
                   style={{
-                    left: `${signaturePosition.x}px`,
-                    top: `${signaturePosition.y}px`,
+                    left: `${signature.position.x}px`,
+                    top: `${signature.position.y}px`,
                   }}
-                  onMouseDown={handleSignatureMouseDown}
+                  onMouseDown={(e) => handleSignatureMouseDown(e, signature.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveSignatureId(signature.id);
+                  }}
                 >
                   <img
-                    src={signatureDataUrl}
+                    src={signature.dataUrl}
                     alt="Signature"
-                    className="border-2 border-transparent group-hover:border-blue-400 transition-colors"
+                    className={`border-2 transition-colors ${activeSignatureId === signature.id ? 'border-blue-500' : 'border-transparent group-hover:border-blue-400'}`}
                     style={{
-                      width: `${signatureSize.width}px`,
-                      height: `${signatureSize.height}px`,
+                      width: `${signature.size.width}px`,
+                      height: `${signature.size.height}px`,
                       objectFit: 'contain',
                     }}
                   />
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleEditSignature();
-                    }}
-                    className="absolute -top-8 left-0 px-2 py-1 bg-blue-600 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleRemoveSignature();
-                    }}
-                    className="absolute -top-8 left-14 px-2 py-1 bg-red-600 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    Remove
-                  </button>
+                  <div className="absolute -top-10 left-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDecreaseSize(signature.id);
+                      }}
+                      disabled={signature.size.width <= 100}
+                      className="p-1.5 bg-gray-700 text-white text-xs rounded hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Zoom out"
+                    >
+                      <ZoomOut size={14} />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleIncreaseSize(signature.id);
+                      }}
+                      disabled={signature.size.width >= 350}
+                      className="p-1.5 bg-gray-700 text-white text-xs rounded hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Zoom in"
+                    >
+                      <ZoomIn size={14} />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCopySignature(signature.id);
+                      }}
+                      className="p-1.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
+                      title="Copy signature"
+                    >
+                      <Copy size={14} />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveSignature(signature.id);
+                      }}
+                      className="p-1.5 bg-red-600 text-white text-xs rounded hover:bg-red-700"
+                      title="Remove signature"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </div>
-              )}
+              ))}
             </div>
           </div>
         </div>
 
         <div className="p-4 border-t border-gray-200 bg-gray-50 flex justify-between items-center flex-shrink-0">
           <div className="flex items-center gap-4">
-            {signatureDataUrl && (
+            {createdSignatures.length > 0 && (
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600 font-medium">Size:</span>
-                <button
-                  onClick={handleDecreaseSize}
-                  disabled={signatureSize.width <= 100}
-                  className="p-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Decrease signature size"
-                >
-                  <ZoomOut size={18} />
-                </button>
-                <button
-                  onClick={handleIncreaseSize}
-                  disabled={signatureSize.width >= 350}
-                  className="p-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Increase signature size"
-                >
-                  <ZoomIn size={18} />
-                </button>
+                <span className="text-sm text-gray-600 font-medium">Your signatures:</span>
+                <div className="flex gap-2">
+                  {createdSignatures.map((sig, index) => (
+                    <button
+                      key={index}
+                      onClick={() => handleUseExistingSignature(index)}
+                      className="p-1 border border-gray-300 rounded hover:border-blue-500 transition-colors"
+                      title={`Use ${sig.signerName}'s signature`}
+                    >
+                      <img
+                        src={sig.dataUrl}
+                        alt={`Signature ${index + 1}`}
+                        className="h-8 w-auto object-contain"
+                      />
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
+            <button
+              onClick={handleCreateNewSignature}
+              className="flex items-center gap-2 px-3 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              <Plus size={16} />
+              Create New Signature
+            </button>
           </div>
 
           <div className="flex gap-3">
@@ -466,11 +625,11 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
             </button>
             <button
               onClick={handleApprove}
-              disabled={!signaturePosition}
+              disabled={signatures.length === 0}
               className="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <CheckCircle size={18} />
-              Approve with Signature
+              Approve with Signature{signatures.length > 1 ? 's' : ''}
             </button>
           </div>
         </div>
@@ -485,6 +644,7 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
                 onClick={() => {
                   setShowSignatureModal(false);
                   setPendingClickPosition(null);
+                  setSelectedCreatedSignature(null);
                 }}
                 className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
               >
@@ -492,9 +652,50 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
               </button>
             </div>
 
+            {createdSignatures.length > 0 && (
+              <div className="p-4 border-b border-gray-200 bg-gray-50">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Use an existing signature
+                </label>
+                <div className="flex gap-2 flex-wrap">
+                  {createdSignatures.map((sig, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setSelectedCreatedSignature(index)}
+                      className={`p-2 border-2 rounded-lg transition-all ${
+                        selectedCreatedSignature === index
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <img
+                        src={sig.dataUrl}
+                        alt={`Signature ${index + 1}`}
+                        className="h-10 w-auto object-contain"
+                      />
+                    </button>
+                  ))}
+                </div>
+                {selectedCreatedSignature !== null && (
+                  <button
+                    onClick={handleApplySignature}
+                    className="mt-3 w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Use Selected Signature
+                  </button>
+                )}
+                <div className="mt-3 pt-3 border-t border-gray-200">
+                  <p className="text-sm text-gray-500 text-center">Or create a new signature below</p>
+                </div>
+              </div>
+            )}
+
             <div className="flex border-b border-gray-200">
               <button
-                onClick={() => setSignatureTab('type')}
+                onClick={() => {
+                  setSignatureTab('type');
+                  setSelectedCreatedSignature(null);
+                }}
                 className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium transition-colors ${
                   signatureTab === 'type'
                     ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
@@ -505,7 +706,10 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
                 Type Name
               </button>
               <button
-                onClick={() => setSignatureTab('draw')}
+                onClick={() => {
+                  setSignatureTab('draw');
+                  setSelectedCreatedSignature(null);
+                }}
                 className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium transition-colors ${
                   signatureTab === 'draw'
                     ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
@@ -619,6 +823,7 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
                 onClick={() => {
                   setShowSignatureModal(false);
                   setPendingClickPosition(null);
+                  setSelectedCreatedSignature(null);
                 }}
                 className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
               >
@@ -626,7 +831,8 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
               </button>
               <button
                 onClick={handleApplySignature}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                disabled={selectedCreatedSignature !== null}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Apply Signature
               </button>
