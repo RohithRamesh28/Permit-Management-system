@@ -929,56 +929,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                 </ul>
               </div>
 
-              <div className="border border-gray-200 rounded-md p-4 mb-4">
-                <h3 className="text-xs font-semibold text-gray-900 mb-3">General Documents</h3>
-                <label className="flex flex-col items-center justify-center gap-2 px-3 py-5 border-2 border-dashed border-gray-300 rounded-md cursor-pointer hover:bg-gray-50 transition-colors">
-                  <Upload size={24} className="text-gray-400" />
-                  <div className="text-center">
-                    <span className="text-xs font-medium text-gray-700">Choose Files</span>
-                    <p className="text-[10px] text-gray-500 mt-0.5">Select multiple images or PDFs</p>
-                  </div>
-                  <input
-                    type="file"
-                    accept="image/*,.pdf"
-                    multiple
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
-                </label>
-
-                {uploadedFiles.length > 0 && (
-                  <div className="mt-3">
-                    <p className="text-xs font-medium text-gray-700 mb-2">
-                      Selected Files ({uploadedFiles.length})
-                    </p>
-                    <div className="space-y-1.5">
-                      {uploadedFiles.map((file, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between p-2 bg-gray-50 border border-gray-200 rounded-md"
-                        >
-                          <div className="flex items-center gap-2 min-w-0 flex-1">
-                            <FileText size={14} className="text-gray-400 flex-shrink-0" />
-                            <span className="text-xs text-gray-700 truncate">{file.name}</span>
-                            <span className="text-[10px] text-gray-500 flex-shrink-0">
-                              ({(file.size / 1024).toFixed(1)} KB)
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveFile(index)}
-                            className="text-red-600 hover:text-red-800 text-xs font-medium ml-2 flex-shrink-0"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="mb-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div className={`border rounded-md p-4 ${showDocumentError ? 'border-red-500 bg-red-50' : 'border-gray-200'}`}>
                   <h3 className="text-xs font-semibold text-gray-900 mb-3">
                     Permitting Application <span className="text-red-500">*</span>
@@ -990,7 +941,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                   }`}>
                     <Upload size={24} className={showDocumentError ? "text-red-500" : "text-gray-400"} />
                     <div className="text-center">
-                      <span className={`text-xs font-medium ${showDocumentError ? 'text-red-700' : 'text-gray-700'}`}>Choose Document</span>
+                      <span className={`text-xs font-medium ${showDocumentError ? 'text-red-700' : 'text-gray-700'}`}>Upload Document</span>
                       <p className={`text-[10px] mt-0.5 ${showDocumentError ? 'text-red-600' : 'text-gray-500'}`}>PDF only - Single file (Required)</p>
                     </div>
                     <input
@@ -1035,6 +986,58 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     </div>
                   )}
                 </div>
+
+                <div className="border border-gray-200 rounded-md p-4">
+                  <h3 className="text-xs font-semibold text-gray-900 mb-3">General Documents</h3>
+                  <label className="flex flex-col items-center justify-center gap-2 px-3 py-5 border-2 border-dashed border-gray-300 rounded-md cursor-pointer hover:bg-gray-50 transition-colors">
+                    <Upload size={24} className="text-gray-400" />
+                    <div className="text-center">
+                      <span className="text-xs font-medium text-gray-700">Choose Files</span>
+                      <p className="text-[10px] text-gray-500 mt-0.5">Select multiple images or PDFs</p>
+                    </div>
+                    <input
+                      type="file"
+                      accept="image/*,.pdf"
+                      multiple
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                  </label>
+
+                  {uploadedFiles.length > 0 && (
+                    <div className="mt-3">
+                      <p className="text-xs font-medium text-gray-700 mb-2">
+                        Selected Files ({uploadedFiles.length})
+                      </p>
+                      <div className="space-y-1.5">
+                        {uploadedFiles.map((file, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between p-2 bg-gray-50 border border-gray-200 rounded-md"
+                          >
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                              <FileText size={14} className="text-gray-400 flex-shrink-0" />
+                              <span className="text-xs text-gray-700 truncate">{file.name}</span>
+                              <span className="text-[10px] text-gray-500 flex-shrink-0">
+                                ({(file.size / 1024).toFixed(1)} KB)
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveFile(index)}
+                              className="text-red-600 hover:text-red-800 text-xs font-medium ml-2 flex-shrink-0"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="mb-4">
 
                 <div className="mt-4">
                   <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-md border border-gray-200 mb-3">
