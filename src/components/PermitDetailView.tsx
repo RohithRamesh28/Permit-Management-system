@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, CheckCircle, XCircle, FileText, Clock, Eye, PlusCircle, CreditCard as Edit2, AlertCircle, Download, Upload } from 'lucide-react';
 import { supabase, Permit, PermitDocument, PermitAuditLog } from '../lib/supabase';
 import { SignaturePad, SignaturePadRef } from './SignaturePad';
-import { generatePermitPDF, downloadPDF } from '../services/pdfGenerator';
+import { generatePermitPDF, downloadPDF, mergePDFs } from '../services/pdfGenerator';
 import DocumentPreviewModal from './DocumentPreviewModal';
 import PdfSigningModal from './PdfSigningModal';
 import SearchableDropdown from './SearchableDropdown';
@@ -121,7 +121,15 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
 
   const handlePdfSigningApprove = async (signatureData: string, signerNameFromModal: string, position: { x: number; y: number }) => {
     setSignerName(signerNameFromModal);
+    setSignaturePosition(position);
     setShowPdfSignModal(false);
+    const documentToSign = documents.find(doc => doc.document_type === 'to_sign');
+    if (documentToSign) {
+      await supabase
+        .from('permits')
+        .update({ signed_document_url: documentToSign.file_url })
+        .eq('id', permitId);
+    }
     setPdfToSign(null);
     await handleApprove(signatureData);
   };
@@ -569,7 +577,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
     }
   };
 
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async () => {
     if (!permit) return;
 
     const pdfBlob = generatePermitPDF({
@@ -599,8 +607,10 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
       approvedAt: permit.status === 'Active' && permit.signed_at ? formatDate(permit.signed_at) : undefined,
     });
 
+    const mergedPdfBlob = await mergePDFs(pdfBlob, (permit as any).signed_document_url);
+
     const filename = `PERMIT-${permit.ontivity_project_number}.pdf`;
-    downloadPDF(pdfBlob, filename);
+    downloadPDF(mergedPdfBlob, filename);
   };
 
   const getStatusBadgeClass = (status: string) => {
@@ -1339,6 +1349,21 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                   </div>
                 )}
 
+                {permit.signed_document_url && (
+                  <div className="bg-gray-50 rounded-lg p-6">
+                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Signed PDF</h2>
+                    <a
+                      href={permit.signed_document_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 w-full bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition-colors font-medium"
+                    >
+                      <FileText size={20} />
+                      Download Signed PDF
+                    </a>
+                  </div>
+                )}
+
                 {auditLog.length > 0 && (
                   <div className="bg-gray-50 rounded-lg p-6">
                     <h2 className="text-lg font-semibold text-gray-900 mb-4">Audit Trail</h2>
@@ -1608,6 +1633,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         <PdfSigningModal
           pdfUrl={pdfToSign.url}
           pdfName={pdfToSign.name}
+          signerName={userName || 'System Admin'}
           onClose={() => {
             setShowPdfSignModal(false);
             setPdfToSign(null);

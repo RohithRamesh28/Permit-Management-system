@@ -7,14 +7,14 @@ interface PdfSigningModalProps {
   pdfName: string;
   onClose: () => void;
   onApprove: (signatureData: string, signerName: string, position: { x: number; y: number }) => void;
+  signerName?: string;
 }
 
 type SigningStep = 'draw' | 'place';
 
-export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }: PdfSigningModalProps) {
+export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove, signerName: initialSignerName = '' }: PdfSigningModalProps) {
   const [step, setStep] = useState<SigningStep>('draw');
   const [signatureDataUrl, setSignatureDataUrl] = useState<string>('');
-  const [signerName, setSignerName] = useState('');
   const [signaturePosition, setSignaturePosition] = useState<{ x: number; y: number } | null>(null);
   const [cursorPosition, setCursorPosition] = useState<{ x: number; y: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -35,11 +35,6 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
   }, [onClose]);
 
   const handleDrawSignature = () => {
-    if (!signerName.trim()) {
-      alert('Please enter your name');
-      return;
-    }
-
     if (!signaturePadRef.current || signaturePadRef.current.isEmpty()) {
       alert('Please draw your signature');
       return;
@@ -73,7 +68,7 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
   };
 
   const handlePdfClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (step !== 'place' || !signatureDataUrl) return;
+    if (step !== 'place' || !signatureDataUrl || isDragging) return;
 
     const rect = pdfContainerRef.current?.getBoundingClientRect();
     if (!rect) return;
@@ -92,19 +87,16 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
 
   const handleSignatureMouseDown = (e: React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault();
     if (!signaturePosition) return;
 
     setIsDragging(true);
-    const rect = pdfContainerRef.current?.getBoundingClientRect();
-    const scrollTop = pdfContainerRef.current?.parentElement?.scrollTop || 0;
-    const scrollLeft = pdfContainerRef.current?.parentElement?.scrollLeft || 0;
 
-    if (rect) {
-      setDragOffset({
-        x: e.clientX - rect.left + scrollLeft - signaturePosition.x,
-        y: e.clientY - rect.top + scrollTop - signaturePosition.y,
-      });
-    }
+    const signatureElement = e.currentTarget.getBoundingClientRect();
+    setDragOffset({
+      x: e.clientX - signatureElement.left,
+      y: e.clientY - signatureElement.top,
+    });
   };
 
   const handleIncreaseSize = () => {
@@ -138,7 +130,7 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
       return;
     }
 
-    onApprove(signatureDataUrl, signerName, signaturePosition);
+    onApprove(signatureDataUrl, initialSignerName, signaturePosition);
   };
 
   const handleBackToDrawing = () => {
@@ -158,7 +150,7 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
             </h2>
             <p className="text-sm text-gray-600 mt-1">
               {step === 'draw'
-                ? 'Draw your signature and enter your name to continue'
+                ? 'Draw your signature below to continue'
                 : 'Click anywhere on the document to place your signature. You can drag to reposition it.'}
             </p>
           </div>
@@ -174,19 +166,6 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
         {step === 'draw' && (
           <div className="flex-1 overflow-auto p-6">
             <div className="max-w-md mx-auto space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Your Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={signerName}
-                  onChange={(e) => setSignerName(e.target.value)}
-                  placeholder="Enter your full name"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
-                />
-              </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Draw Your Signature <span className="text-red-500">*</span>

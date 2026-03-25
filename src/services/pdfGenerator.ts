@@ -1,4 +1,5 @@
 import { jsPDF } from 'jspdf';
+import { PDFDocument } from 'pdf-lib';
 
 export interface PermitFormData {
   requestor: string;
@@ -305,4 +306,30 @@ export const downloadPDF = (blob: Blob, filename: string) => {
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+};
+
+export const mergePDFs = async (permitPdfBlob: Blob, signedDocumentUrl?: string): Promise<Blob> => {
+  const mergedPdf = await PDFDocument.create();
+
+  const permitPdfBytes = await permitPdfBlob.arrayBuffer();
+  const permitPdf = await PDFDocument.load(permitPdfBytes);
+
+  const permitPages = await mergedPdf.copyPages(permitPdf, permitPdf.getPageIndices());
+  permitPages.forEach((page) => mergedPdf.addPage(page));
+
+  if (signedDocumentUrl) {
+    try {
+      const response = await fetch(signedDocumentUrl);
+      const signedDocBytes = await response.arrayBuffer();
+      const signedDoc = await PDFDocument.load(signedDocBytes);
+
+      const signedPages = await mergedPdf.copyPages(signedDoc, signedDoc.getPageIndices());
+      signedPages.forEach((page) => mergedPdf.addPage(page));
+    } catch (error) {
+      console.error('Error loading signed document:', error);
+    }
+  }
+
+  const mergedPdfBytes = await mergedPdf.save();
+  return new Blob([mergedPdfBytes], { type: 'application/pdf' });
 };
