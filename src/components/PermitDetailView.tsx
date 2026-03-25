@@ -43,6 +43,8 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
   const [showPdfSignModal, setShowPdfSignModal] = useState(false);
   const [pdfToSign, setPdfToSign] = useState<{ url: string; name: string } | null>(null);
   const [signaturePosition, setSignaturePosition] = useState<{ x: number; y: number } | null>(null);
+  const [showCloseModal, setShowCloseModal] = useState(false);
+  const [closeNotes, setCloseNotes] = useState('');
 
   useEffect(() => {
     fetchPermitDetails();
@@ -642,6 +644,42 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
 
     const filename = `PERMIT-${permit.ontivity_project_number}.pdf`;
     downloadPDF(mergedPdfBlob, filename);
+  };
+
+  const handleClosePermit = async () => {
+    if (!permit) return;
+    setActionInProgress(true);
+
+    try {
+      const { error: updateError } = await supabase
+        .from('permits')
+        .update({ status: 'Closed' })
+        .eq('id', permitId);
+
+      if (updateError) throw updateError;
+
+      await supabase.from('permit_audit_log').insert([
+        {
+          permit_id: permitId,
+          action: 'Closed',
+          performed_by: userName || 'System Admin',
+          notes: closeNotes.trim() || 'Permit closed',
+        },
+      ]);
+
+      setShowCloseModal(false);
+      setCloseNotes('');
+      await fetchPermitDetails();
+
+      setSuccessMessage('Permit closed successfully');
+      setShowSuccessToast(true);
+      setTimeout(() => setShowSuccessToast(false), 3000);
+    } catch (error) {
+      console.error('Error closing permit:', error);
+      alert('Error closing permit. Please try again.');
+    } finally {
+      setActionInProgress(false);
+    }
   };
 
   const getStatusBadgeClass = (status: string) => {
@@ -1330,7 +1368,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                     </div>
 
                     {permit.status === 'Active' && (
-                      <div className="mt-4 pt-4 border-t border-gray-300">
+                      <div className="mt-4 pt-4 border-t border-gray-300 space-y-3">
                         <button
                           onClick={() => setShowUploadModal(true)}
                           className="w-full flex items-center justify-center gap-2 bg-[#0072BC] text-white px-4 py-2 rounded-lg hover:bg-[#005a94] transition-colors"
@@ -1338,9 +1376,17 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                           <Upload size={18} />
                           Upload Additional Files
                         </button>
-                        <p className="text-xs text-gray-600 mt-2 text-center">
+                        <p className="text-xs text-gray-600 text-center">
                           Add additional documents to this approved permit
                         </p>
+                        <button
+                          onClick={() => setShowCloseModal(true)}
+                          disabled={actionInProgress}
+                          className="w-full flex items-center justify-center gap-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50"
+                        >
+                          <XCircle size={18} />
+                          Close Permit
+                        </button>
                       </div>
                     )}
                   </div>
@@ -1620,6 +1666,42 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                 className="px-4 py-2 bg-[#0072BC] text-white rounded-lg hover:bg-[#005a94] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {uploadingFiles ? 'Uploading...' : 'Upload Files'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCloseModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Close Permit</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Are you sure you want to close this permit? This action marks the permit as completed.
+            </p>
+            <textarea
+              value={closeNotes}
+              onChange={(e) => setCloseNotes(e.target.value)}
+              rows={3}
+              placeholder="Add closing notes (optional)..."
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent mb-4"
+            />
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowCloseModal(false);
+                  setCloseNotes('');
+                }}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleClosePermit}
+                disabled={actionInProgress}
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Confirm Close
               </button>
             </div>
           </div>
