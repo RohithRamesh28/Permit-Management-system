@@ -738,8 +738,8 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                 )}
 
                 {selectedState && (permitLevel === "State" || (permitLevel === "CountyCity" && selectedCountyCityTitle)) && (
-                  <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-md border border-gray-200">
+                  <div className="bg-gray-50 p-4 rounded-md border border-gray-200 space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
                           QP Name
@@ -749,7 +749,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                           type="text"
                           value={qpName || 'Loading...'}
                           readOnly
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed"
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white text-gray-600 cursor-not-allowed"
                         />
                         {!qpName && !qpLoading && (
                           <p className="text-[10px] text-amber-600 mt-1">QP unavailable — contact admin</p>
@@ -763,7 +763,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                           type="text"
                           value={qpEmail || 'N/A'}
                           readOnly
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed"
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white text-gray-600 cursor-not-allowed"
                         />
                       </div>
                     </div>
@@ -786,7 +786,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                         loading={loadingApprovers}
                       />
                     </div>
-                  </>
+                  </div>
                 )}
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
