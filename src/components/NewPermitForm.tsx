@@ -60,7 +60,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
   const [selectedState, setSelectedState] = useState<string | null>(null);
   const [selectedCountyCityTitle, setSelectedCountyCityTitle] = useState<string | null>(null);
   const [availableStates, setAvailableStates] = useState<string[]>([]);
-  const [availableCountyCities, setAvailableCountyCities] = useState<string[]>([]);
+  const [availableCountyCities, setAvailableCountyCities] = useState<Array<{ title: string; qpName: string | null; qpEmail: string | null; spItemId: string | null }>>([]);
   const [qpName, setQpName] = useState<string | null>(null);
   const [qpEmail, setQpEmail] = useState<string | null>(null);
   const [matchedItemId, setMatchedItemId] = useState<string | null>(null);
@@ -127,9 +127,22 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
     setCountiesLoading(true);
     const options = await getCountyCityOptions(permitType, formData.performing_entity, selectedState);
     setAvailableCountyCities(options);
-    if (options.length > 0) {
-      setSelectedCountyCityTitle(options[0]);
+
+    if (options.length === 1) {
+      setSelectedCountyCityTitle(options[0].title);
+      setQpName(options[0].qpName);
+      setQpEmail(options[0].qpEmail);
+      setMatchedItemId(options[0].spItemId);
+      const sourceList = permitType === "Electrical" ? "county_electrical" : "county_contractor";
+      setLicenseListUsed(sourceList);
+    } else if (options.length > 1) {
+      setSelectedCountyCityTitle(null);
+      setQpName(null);
+      setQpEmail(null);
+      setMatchedItemId(null);
+      setLicenseListUsed(null);
     }
+
     setCountiesLoading(false);
   };
 
@@ -168,9 +181,16 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
 
   useEffect(() => {
     if (selectedCountyCityTitle && permitLevel === "CountyCity") {
-      loadQP();
+      const selected = availableCountyCities.find(opt => opt.title === selectedCountyCityTitle);
+      if (selected) {
+        setQpName(selected.qpName);
+        setQpEmail(selected.qpEmail);
+        setMatchedItemId(selected.spItemId);
+        const sourceList = permitType === "Electrical" ? "county_electrical" : "county_contractor";
+        setLicenseListUsed(sourceList);
+      }
     }
-  }, [selectedCountyCityTitle]);
+  }, [selectedCountyCityTitle, availableCountyCities]);
 
   const handlePermitLevelChange = (level: "State" | "CountyCity") => {
     setPermitLevel(level);
@@ -710,7 +730,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                       name="county_city"
                       value={selectedCountyCityTitle || ""}
                       onChange={(value) => setSelectedCountyCityTitle(value)}
-                      options={availableCountyCities}
+                      options={availableCountyCities.map(opt => opt.title)}
                       placeholder="Select county/city..."
                       required
                       loading={countiesLoading}

@@ -43,12 +43,12 @@ export async function getCountyCityOptions(
   permitType: "General" | "Electrical" | "Specialty",
   subsidiary: string,
   state: string
-): Promise<string[]> {
+): Promise<Array<{ title: string; qpName: string | null; qpEmail: string | null; spItemId: string | null }>> {
   const sourceList = selectSourceList("CountyCity", permitType);
 
   const { data, error } = await supabase
     .from("licensing_cache")
-    .select("county_city_title, subsidiary")
+    .select("county_city_title, subsidiary, qp_name, qp_email, sp_item_id")
     .eq("source_list", sourceList)
     .eq("state", state)
     .in("status", ["Active", "Pending"]);
@@ -59,7 +59,20 @@ export async function getCountyCityOptions(
   }
 
   const filtered = data.filter(row => subsidiaryMatches(row.subsidiary, subsidiary));
-  return [...new Set(filtered.map(r => r.county_city_title).filter(Boolean))].sort();
+
+  const uniqueMap = new Map<string, { title: string; qpName: string | null; qpEmail: string | null; spItemId: string | null }>();
+  filtered.forEach(row => {
+    if (row.county_city_title && !uniqueMap.has(row.county_city_title)) {
+      uniqueMap.set(row.county_city_title, {
+        title: row.county_city_title,
+        qpName: row.qp_name,
+        qpEmail: row.qp_email,
+        spItemId: row.sp_item_id
+      });
+    }
+  });
+
+  return Array.from(uniqueMap.values()).sort((a, b) => a.title.localeCompare(b.title));
 }
 
 export async function getQPForSelection(
