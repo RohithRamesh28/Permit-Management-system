@@ -29,7 +29,7 @@ export function validateLicenseType(
   const licenseTypeLower = licenseType.toLowerCase();
 
   if (permitType === "Electrical") {
-    return licenseTypeLower.includes("electrical");
+    return licenseTypeLower.includes("electric");
   } else if (permitType === "General") {
     return licenseTypeLower.includes("general");
   } else if (permitType === "Specialty") {
