@@ -349,13 +349,21 @@ export const embedSignatureInPDF = async (
 
   const pages = pdfDoc.getPages();
   const firstPage = pages[0];
-  const { height: pageHeight } = firstPage.getSize();
+  const { width: pageWidth, height: pageHeight } = firstPage.getSize();
+
+  const scaleX = pageWidth / PDF_PREVIEW_WIDTH;
+  const scaleY = pageHeight / PDF_PREVIEW_HEIGHT;
+
+  const pdfX = position.x * scaleX;
+  const pdfY = position.y * scaleY;
+  const pdfWidth = signatureSize.width * scaleX;
+  const pdfHeight = signatureSize.height * scaleY;
 
   firstPage.drawImage(signatureImage, {
-    x: position.x,
-    y: pageHeight - position.y - signatureSize.height,
-    width: signatureSize.width,
-    height: signatureSize.height,
+    x: pdfX,
+    y: pageHeight - pdfY - pdfHeight,
+    width: pdfWidth,
+    height: pdfHeight,
   });
 
   const modifiedPdfBytes = await pdfDoc.save();
@@ -369,6 +377,9 @@ export interface SignatureData {
   size: { width: number; height: number };
 }
 
+export const PDF_PREVIEW_WIDTH = 850;
+export const PDF_PREVIEW_HEIGHT = 1100;
+
 export const embedMultipleSignaturesInPDF = async (
   pdfUrl: string,
   signatures: SignatureData[]
@@ -379,17 +390,25 @@ export const embedMultipleSignaturesInPDF = async (
 
   const pages = pdfDoc.getPages();
   const firstPage = pages[0];
-  const { height: pageHeight } = firstPage.getSize();
+  const { width: pageWidth, height: pageHeight } = firstPage.getSize();
+
+  const scaleX = pageWidth / PDF_PREVIEW_WIDTH;
+  const scaleY = pageHeight / PDF_PREVIEW_HEIGHT;
 
   for (const sig of signatures) {
     const signatureImageBytes = await fetch(sig.signatureData).then(res => res.arrayBuffer());
     const signatureImage = await pdfDoc.embedPng(signatureImageBytes);
 
+    const pdfX = sig.position.x * scaleX;
+    const pdfY = sig.position.y * scaleY;
+    const pdfWidth = sig.size.width * scaleX;
+    const pdfHeight = sig.size.height * scaleY;
+
     firstPage.drawImage(signatureImage, {
-      x: sig.position.x,
-      y: pageHeight - sig.position.y - sig.size.height,
-      width: sig.size.width,
-      height: sig.size.height,
+      x: pdfX,
+      y: pageHeight - pdfY - pdfHeight,
+      width: pdfWidth,
+      height: pdfHeight,
     });
   }
 

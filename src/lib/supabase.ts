@@ -37,6 +37,7 @@ export interface Permit {
   signed_by?: string;
   signed_at?: string;
   signed_pdf_url?: string;
+  signed_document_url?: string;
   approved_by?: string;
   created_at: string;
   updated_at: string;
@@ -49,6 +50,7 @@ export interface PermitDocument {
   file_name: string;
   file_url: string;
   uploaded_at: string;
+  uploaded_after_approval?: boolean;
 }
 
 export interface PermitAuditLog {

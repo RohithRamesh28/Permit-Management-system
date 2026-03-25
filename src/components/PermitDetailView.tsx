@@ -638,7 +638,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
       approvedAt: permit.status === 'Active' && permit.signed_at ? formatDate(permit.signed_at) : undefined,
     });
 
-    const mergedPdfBlob = await mergePDFs(pdfBlob, (permit as any).signed_document_url);
+    const mergedPdfBlob = await mergePDFs(pdfBlob, permit.signed_document_url);
 
     const filename = `PERMIT-${permit.ontivity_project_number}.pdf`;
     downloadPDF(mergedPdfBlob, filename);
@@ -1171,33 +1171,53 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                 <div>
                   <h2 className="text-lg font-semibold text-gray-900 mb-4">Documents</h2>
 
-                  {permit.signed_pdf_url && (
-                    <div className="mb-6">
-                      <h3 className="text-sm font-semibold text-gray-700 mb-3">Permit Application</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <button
-                          onClick={() => setPreviewDocument({
-                            url: permit.signed_pdf_url!,
-                            name: 'Permit Application.pdf',
-                            type: 'application/pdf'
-                          })}
-                          className="flex items-center gap-3 p-3 border-2 border-[#0072BC] bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors text-left w-full"
-                        >
-                          <FileText size={20} className="text-[#0072BC]" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 truncate">Permit Application</p>
-                            <p className="text-xs text-[#0072BC]">Generated permit form</p>
-                          </div>
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                  <div className="mb-6">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Permit Application</h3>
+                    {(() => {
+                      const permitDoc = documents.find(doc => doc.document_type === 'to_sign');
+                      const isSigned = !!permit.signed_document_url;
+                      const docUrl = isSigned ? permit.signed_document_url! : permitDoc?.file_url;
+                      const docName = permitDoc?.file_name || 'Permit Application';
 
-                  {documents.filter(doc => doc.document_type === 'to_sign' || doc.document_type === 'signed').length > 0 && (
+                      if (docUrl) {
+                        return (
+                          <button
+                            onClick={() => setPreviewDocument({
+                              url: docUrl,
+                              name: isSigned ? `${docName} (Signed)` : docName,
+                              type: 'application/pdf'
+                            })}
+                            className={`flex items-center gap-3 p-3 border-2 rounded-lg transition-colors text-left w-full ${
+                              isSigned
+                                ? 'border-green-300 bg-green-50 hover:bg-green-100'
+                                : 'border-amber-300 bg-amber-50 hover:bg-amber-100'
+                            }`}
+                          >
+                            <FileText size={20} className={isSigned ? 'text-green-600' : 'text-amber-600'} />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-900 truncate">{docName}</p>
+                              <p className={`text-xs ${isSigned ? 'text-green-700' : 'text-amber-700'}`}>
+                                {isSigned ? 'Signed' : 'Awaiting signature'}
+                              </p>
+                            </div>
+                            {isSigned && (
+                              <CheckCircle size={18} className="text-green-600 flex-shrink-0" />
+                            )}
+                          </button>
+                        );
+                      }
+
+                      return (
+                        <p className="text-sm text-gray-500 italic">No permit application document uploaded</p>
+                      );
+                    })()}
+                  </div>
+
+                  {documents.filter(doc => doc.document_type !== 'to_sign' && doc.document_type !== 'signed').length > 0 && (
                     <div className="mb-6">
-                      <h3 className="text-sm font-semibold text-gray-700 mb-3">Documents Requiring Signature</h3>
+                      <h3 className="text-sm font-semibold text-gray-700 mb-3">General Documents</h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {documents.filter(doc => doc.document_type === 'to_sign' || doc.document_type === 'signed').map((doc) => (
+                        {documents.filter(doc => doc.document_type !== 'to_sign' && doc.document_type !== 'signed').map((doc) => (
                           <button
                             key={doc.id}
                             onClick={() => setPreviewDocument({
@@ -1205,13 +1225,17 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                               name: doc.file_name,
                               type: doc.file_name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'
                             })}
-                            className="flex items-center gap-3 p-3 border border-amber-200 bg-amber-50 rounded-lg hover:bg-amber-100 transition-colors text-left w-full"
+                            className={`flex items-center gap-3 p-3 border rounded-lg transition-colors text-left w-full ${
+                              doc.uploaded_after_approval
+                                ? 'border-green-200 bg-green-50 hover:bg-green-100'
+                                : 'border-gray-200 hover:bg-gray-50'
+                            }`}
                           >
-                            <Eye size={20} className="text-amber-600" />
+                            <Eye size={20} className={doc.uploaded_after_approval ? 'text-green-600' : 'text-[#0072BC]'} />
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-gray-900 truncate">{doc.file_name}</p>
-                              <p className="text-xs text-amber-700">
-                                {doc.document_type === 'signed' ? 'Signed document' : 'Awaiting signature'}
+                              <p className={`text-xs ${doc.uploaded_after_approval ? 'text-green-700' : 'text-gray-500'}`}>
+                                {doc.uploaded_after_approval ? 'Uploaded after approval' : 'Uploaded document'}
                               </p>
                             </div>
                           </button>
@@ -1220,58 +1244,8 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                     </div>
                   )}
 
-                  {documents.filter(doc => doc.document_type === 'general' && !doc.uploaded_after_approval).length > 0 && (
-                    <div className="mb-6">
-                      <h3 className="text-sm font-semibold text-gray-700 mb-3">General Documents</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {documents.filter(doc => doc.document_type === 'general' && !doc.uploaded_after_approval).map((doc) => (
-                          <button
-                            key={doc.id}
-                            onClick={() => setPreviewDocument({
-                              url: doc.file_url,
-                              name: doc.file_name,
-                              type: doc.file_name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'
-                            })}
-                            className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left w-full"
-                          >
-                            <Eye size={20} className="text-[#0072BC]" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-gray-900 truncate">{doc.file_name}</p>
-                              <p className="text-xs text-gray-500">Uploaded document</p>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {documents.filter(doc => doc.uploaded_after_approval).length > 0 && (
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-700 mb-3">Additional Files (Post-Approval)</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {documents.filter(doc => doc.uploaded_after_approval).map((doc) => (
-                          <button
-                            key={doc.id}
-                            onClick={() => setPreviewDocument({
-                              url: doc.file_url,
-                              name: doc.file_name,
-                              type: doc.file_name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'
-                            })}
-                            className="flex items-center gap-3 p-3 border border-green-200 bg-green-50 rounded-lg hover:bg-green-100 transition-colors text-left w-full"
-                          >
-                            <Eye size={20} className="text-green-600" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-gray-900 truncate">{doc.file_name}</p>
-                              <p className="text-xs text-green-700">Uploaded after approval</p>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {!permit.signed_pdf_url && documents.length === 0 && (
-                    <p className="text-sm text-gray-500 italic">No documents available</p>
+                  {documents.length === 0 && (
+                    <p className="text-sm text-gray-500 italic mt-2">No documents available</p>
                   )}
                 </div>
               </div>
@@ -1372,26 +1346,9 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                   </div>
                 )}
 
-                {permit.signature_image_url && (
-                  <div className="bg-gray-50 rounded-lg p-6">
-                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Signature</h2>
-                    <div className="space-y-2">
-                      <img
-                        src={permit.signature_image_url}
-                        alt="Signature"
-                        className="max-w-full h-auto border border-gray-300 rounded bg-white p-2"
-                      />
-                      <div className="text-sm text-gray-600">
-                        <p>Signed by: {permit.signed_by}</p>
-                        <p>Date: {permit.signed_at && formatDate(permit.signed_at)}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
                 {permit.signed_pdf_url && (
                   <div className="bg-gray-50 rounded-lg p-6">
-                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Permit Document</h2>
+                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Generated Permit Form</h2>
                     <a
                       href={permit.signed_pdf_url}
                       target="_blank"
@@ -1400,21 +1357,6 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                     >
                       <FileText size={20} />
                       Download Permit PDF
-                    </a>
-                  </div>
-                )}
-
-                {permit.signed_document_url && (
-                  <div className="bg-gray-50 rounded-lg p-6">
-                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Signed PDF</h2>
-                    <a
-                      href={permit.signed_document_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-2 w-full bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition-colors font-medium"
-                    >
-                      <FileText size={20} />
-                      Download Signed PDF
                     </a>
                   </div>
                 )}

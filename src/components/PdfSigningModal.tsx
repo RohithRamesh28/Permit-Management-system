@@ -637,9 +637,9 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
 
       {showSignatureModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">Create Your Signature</h3>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between p-3 border-b border-gray-200 flex-shrink-0">
+              <h3 className="text-base font-semibold text-gray-900">Create Your Signature</h3>
               <button
                 onClick={() => {
                   setShowSignatureModal(false);
@@ -652,57 +652,19 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
               </button>
             </div>
 
-            {createdSignatures.length > 0 && (
-              <div className="p-4 border-b border-gray-200 bg-gray-50">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Use an existing signature
-                </label>
-                <div className="flex gap-2 flex-wrap">
-                  {createdSignatures.map((sig, index) => (
-                    <button
-                      key={index}
-                      onClick={() => setSelectedCreatedSignature(index)}
-                      className={`p-2 border-2 rounded-lg transition-all ${
-                        selectedCreatedSignature === index
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <img
-                        src={sig.dataUrl}
-                        alt={`Signature ${index + 1}`}
-                        className="h-10 w-auto object-contain"
-                      />
-                    </button>
-                  ))}
-                </div>
-                {selectedCreatedSignature !== null && (
-                  <button
-                    onClick={handleApplySignature}
-                    className="mt-3 w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    Use Selected Signature
-                  </button>
-                )}
-                <div className="mt-3 pt-3 border-t border-gray-200">
-                  <p className="text-sm text-gray-500 text-center">Or create a new signature below</p>
-                </div>
-              </div>
-            )}
-
-            <div className="flex border-b border-gray-200">
+            <div className="flex border-b border-gray-200 flex-shrink-0">
               <button
                 onClick={() => {
                   setSignatureTab('type');
                   setSelectedCreatedSignature(null);
                 }}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium transition-colors ${
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${
                   signatureTab === 'type'
                     ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                 }`}
               >
-                <Type size={18} />
+                <Type size={16} />
                 Type Name
               </button>
               <button
@@ -710,22 +672,57 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
                   setSignatureTab('draw');
                   setSelectedCreatedSignature(null);
                 }}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium transition-colors ${
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${
                   signatureTab === 'draw'
                     ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                 }`}
               >
-                <PenTool size={18} />
+                <PenTool size={16} />
                 Draw Signature
               </button>
             </div>
 
-            <div className="p-4">
+            <div className="overflow-y-auto flex-1 p-4">
+              {createdSignatures.length > 0 && (
+                <div className="mb-4 pb-3 border-b border-gray-200">
+                  <label className="block text-xs font-medium text-gray-700 mb-2">
+                    Use an existing signature
+                  </label>
+                  <div className="flex gap-2 flex-wrap">
+                    {createdSignatures.map((sig, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setSelectedCreatedSignature(index)}
+                        className={`p-1.5 border-2 rounded-lg transition-all ${
+                          selectedCreatedSignature === index
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <img
+                          src={sig.dataUrl}
+                          alt={`Signature ${index + 1}`}
+                          className="h-8 w-auto object-contain"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                  {selectedCreatedSignature !== null && (
+                    <button
+                      onClick={handleApplySignature}
+                      className="mt-2 w-full px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      Use Selected Signature
+                    </button>
+                  )}
+                </div>
+              )}
+
               {signatureTab === 'type' && (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
                       Your Name
                     </label>
                     <input
@@ -733,27 +730,27 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
                       value={typedName}
                       onChange={(e) => setTypedName(e.target.value)}
                       placeholder="Enter your name"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
                       Select Style
                     </label>
-                    <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto">
+                    <div className="grid grid-cols-2 gap-1.5 max-h-36 overflow-y-auto">
                       {SIGNATURE_FONTS.map((font) => (
                         <button
                           key={font.name}
                           onClick={() => setSelectedFont(font)}
-                          className={`p-3 border-2 rounded-lg text-center transition-all ${
+                          className={`p-2 border-2 rounded-lg text-center transition-all ${
                             selectedFont.name === font.name
                               ? 'border-blue-500 bg-blue-50'
                               : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                           }`}
                         >
                           <span
-                            style={{ fontFamily: font.style, fontSize: '24px' }}
+                            style={{ fontFamily: font.style, fontSize: '18px' }}
                             className="text-gray-900"
                           >
                             {typedName || 'Your Name'}
@@ -763,13 +760,13 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
                     </div>
                   </div>
 
-                  <div className="pt-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
                       Preview
                     </label>
-                    <div className="border border-gray-200 rounded-lg p-4 bg-gray-50 flex items-center justify-center min-h-[80px]">
+                    <div className="border border-gray-200 rounded-lg p-3 bg-gray-50 flex items-center justify-center min-h-[50px]">
                       <span
-                        style={{ fontFamily: selectedFont.style, fontSize: '36px' }}
+                        style={{ fontFamily: selectedFont.style, fontSize: '28px' }}
                         className="text-gray-900"
                       >
                         {typedName || 'Your Name'}
@@ -780,25 +777,25 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
               )}
 
               {signatureTab === 'draw' && (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="block text-sm font-medium text-gray-700">
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-medium text-gray-700">
                         Draw Your Signature
                       </label>
                       <button
                         onClick={clearDrawCanvas}
-                        className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800"
+                        className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
                       >
-                        <RotateCcw size={14} />
+                        <RotateCcw size={12} />
                         Clear
                       </button>
                     </div>
                     <div className="border-2 border-gray-300 rounded-lg overflow-hidden bg-white">
                       <canvas
                         ref={drawCanvasRef}
-                        width={460}
-                        height={150}
+                        width={400}
+                        height={120}
                         className="w-full touch-none cursor-crosshair"
                         style={{ touchAction: 'none' }}
                         onMouseDown={handleDrawStart}
@@ -818,21 +815,21 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
               )}
             </div>
 
-            <div className="flex justify-end gap-3 p-4 border-t border-gray-200 bg-gray-50">
+            <div className="flex justify-end gap-3 p-3 border-t border-gray-200 bg-gray-50 flex-shrink-0">
               <button
                 onClick={() => {
                   setShowSignatureModal(false);
                   setPendingClickPosition(null);
                   setSelectedCreatedSignature(null);
                 }}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleApplySignature}
                 disabled={selectedCreatedSignature !== null}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-5 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Apply Signature
               </button>
