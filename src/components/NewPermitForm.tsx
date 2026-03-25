@@ -99,6 +99,8 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [documentToSign, setDocumentToSign] = useState<File | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [showDocumentError, setShowDocumentError] = useState(false);
+  const [showSignatureError, setShowSignatureError] = useState(false);
   const [requiresSignature, setRequiresSignature] = useState(false);
   const [sendToQpForSignature, setSendToQpForSignature] = useState(false);
   const [sendToApproverForSignature, setSendToApproverForSignature] = useState(false);
@@ -261,6 +263,8 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setValidationError(null);
+    setShowDocumentError(false);
+    setShowSignatureError(false);
     setSubmitting(true);
 
     console.log('Submit handler called', { documentToSign, requiresSignature, sendToQpForSignature, sendToApproverForSignature });
@@ -275,6 +279,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
 
       if (!documentToSign) {
         setValidationError('Please upload a Permitting Application document to continue. This document is required for approval.');
+        setShowDocumentError(true);
         setSubmitting(false);
         window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
@@ -282,6 +287,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
 
       if (requiresSignature && !sendToQpForSignature && !sendToApproverForSignature) {
         setValidationError('You have enabled "Require Signature" but have not selected any recipients. Please select at least one recipient (Qualified Person or Approver) to send the signature request to.');
+        setShowSignatureError(true);
         setSubmitting(false);
         window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
@@ -973,23 +979,39 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
               </div>
 
               <div className="mb-4">
-                <div className="border border-gray-200 rounded-md p-4">
+                <div className={`border rounded-md p-4 ${showDocumentError ? 'border-red-500 bg-red-50' : 'border-gray-200'}`}>
                   <h3 className="text-xs font-semibold text-gray-900 mb-3">
                     Permitting Application <span className="text-red-500">*</span>
                   </h3>
-                  <label className="flex flex-col items-center justify-center gap-2 px-3 py-5 border-2 border-dashed border-gray-300 rounded-md cursor-pointer hover:bg-gray-50 transition-colors">
-                    <Upload size={24} className="text-gray-400" />
+                  <label className={`flex flex-col items-center justify-center gap-2 px-3 py-5 border-2 border-dashed rounded-md cursor-pointer transition-colors ${
+                    showDocumentError
+                      ? 'border-red-500 bg-red-50 hover:bg-red-100'
+                      : 'border-gray-300 hover:bg-gray-50'
+                  }`}>
+                    <Upload size={24} className={showDocumentError ? "text-red-500" : "text-gray-400"} />
                     <div className="text-center">
-                      <span className="text-xs font-medium text-gray-700">Choose Document</span>
-                      <p className="text-[10px] text-gray-500 mt-0.5">PDF only - Single file (Required)</p>
+                      <span className={`text-xs font-medium ${showDocumentError ? 'text-red-700' : 'text-gray-700'}`}>Choose Document</span>
+                      <p className={`text-[10px] mt-0.5 ${showDocumentError ? 'text-red-600' : 'text-gray-500'}`}>PDF only - Single file (Required)</p>
                     </div>
                     <input
                       type="file"
                       accept=".pdf"
-                      onChange={handleDocumentToSignChange}
+                      onChange={(e) => {
+                        handleDocumentToSignChange(e);
+                        setShowDocumentError(false);
+                      }}
                       className="hidden"
                     />
                   </label>
+
+                  {showDocumentError && !documentToSign && (
+                    <div className="mt-3 p-2 bg-red-100 border border-red-300 rounded-md flex items-start gap-2">
+                      <svg className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      <p className="text-xs text-red-800 font-medium">This document is required. Please upload a PDF file to continue.</p>
+                    </div>
+                  )}
 
                   {documentToSign && (
                     <div className="mt-3">
@@ -1038,14 +1060,23 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                   </div>
 
                   {requiresSignature && (
-                    <div className="ml-6 space-y-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                      <p className="text-xs font-medium text-blue-900 mb-2">Send signature request to:</p>
+                    <div className={`ml-6 space-y-2 p-3 rounded-md ${
+                      showSignatureError
+                        ? 'bg-red-50 border border-red-300'
+                        : 'bg-blue-50 border border-blue-200'
+                    }`}>
+                      <p className={`text-xs font-medium mb-2 ${showSignatureError ? 'text-red-900' : 'text-blue-900'}`}>
+                        Send signature request to: {showSignatureError && <span className="text-red-600">*</span>}
+                      </p>
                       <div className="flex items-center gap-2">
                         <input
                           type="checkbox"
                           id="sendToQpForSignature"
                           checked={sendToQpForSignature}
-                          onChange={(e) => setSendToQpForSignature(e.target.checked)}
+                          onChange={(e) => {
+                            setSendToQpForSignature(e.target.checked);
+                            setShowSignatureError(false);
+                          }}
                           className="w-3.5 h-3.5 text-[#0072BC] border-gray-300 rounded focus:ring-[#0072BC] flex-shrink-0"
                         />
                         <label htmlFor="sendToQpForSignature" className="text-xs text-gray-700 cursor-pointer">
@@ -1057,13 +1088,25 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                           type="checkbox"
                           id="sendToApproverForSignature"
                           checked={sendToApproverForSignature}
-                          onChange={(e) => setSendToApproverForSignature(e.target.checked)}
+                          onChange={(e) => {
+                            setSendToApproverForSignature(e.target.checked);
+                            setShowSignatureError(false);
+                          }}
                           className="w-3.5 h-3.5 text-[#0072BC] border-gray-300 rounded focus:ring-[#0072BC] flex-shrink-0"
                         />
                         <label htmlFor="sendToApproverForSignature" className="text-xs text-gray-700 cursor-pointer">
                           Approver
                         </label>
                       </div>
+
+                      {showSignatureError && (
+                        <div className="mt-2 p-2 bg-red-100 border border-red-300 rounded-md flex items-start gap-2">
+                          <svg className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                          <p className="text-xs text-red-800 font-medium">Please select at least one recipient for the signature request.</p>
+                        </div>
+                      )}
                       {(sendToQpForSignature || sendToApproverForSignature) && (
                         <div className="mt-3 pt-3 border-t border-blue-300">
                           <p className="text-[10px] text-blue-800 flex items-center gap-1">
