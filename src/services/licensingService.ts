@@ -20,6 +20,25 @@ export function selectSourceList(
   }
 }
 
+export function validateLicenseType(
+  licenseType: string | null,
+  permitType: "General" | "Electrical" | "Specialty"
+): boolean {
+  if (!licenseType) return false;
+
+  const licenseTypeLower = licenseType.toLowerCase();
+
+  if (permitType === "Electrical") {
+    return licenseTypeLower.includes("electrical");
+  } else if (permitType === "General") {
+    return licenseTypeLower.includes("general");
+  } else if (permitType === "Specialty") {
+    return licenseTypeLower.includes("specialty");
+  }
+
+  return false;
+}
+
 export function normalizeSubsidiary(input: string): string[] {
   const normalized = input.trim();
 
@@ -66,7 +85,7 @@ export async function getAvailableStates(
 
   const { data, error } = await supabase
     .from("licensing_cache")
-    .select("state, subsidiary")
+    .select("state, subsidiary, license_type")
     .eq("source_list", sourceList)
     .in("status", ["Active", "Pending"]);
 
@@ -79,11 +98,18 @@ export async function getAvailableStates(
   console.log('[getAvailableStates] Sample subsidiaries from DB:', [...new Set(data.map(r => r.subsidiary))].slice(0, 5));
 
   const filtered = data.filter(row => {
-    const matches = subsidiaryMatches(row.subsidiary, subsidiary);
-    if (matches) {
-      console.log('[getAvailableStates] Match found:', { dbSubsidiary: row.subsidiary, formSubsidiary: subsidiary });
+    const subsidiarMatch = subsidiaryMatches(row.subsidiary, subsidiary);
+    const licenseTypeMatch = validateLicenseType(row.license_type, permitType);
+
+    if (subsidiarMatch && licenseTypeMatch) {
+      console.log('[getAvailableStates] Match found:', {
+        dbSubsidiary: row.subsidiary,
+        formSubsidiary: subsidiary,
+        licenseType: row.license_type,
+        permitType
+      });
     }
-    return matches;
+    return subsidiarMatch && licenseTypeMatch;
   });
 
   console.log('[getAvailableStates] Filtered count:', filtered.length);
@@ -105,7 +131,7 @@ export async function getCountyCityOptions(
 
   const { data, error } = await supabase
     .from("licensing_cache")
-    .select("county_city_title, subsidiary, qp_name, qp_email, sp_item_id, state")
+    .select("county_city_title, subsidiary, qp_name, qp_email, sp_item_id, state, license_type")
     .eq("source_list", sourceList)
     .in("status", ["Active", "Pending"]);
 
@@ -119,8 +145,12 @@ export async function getCountyCityOptions(
   const stateMatches = data.filter(row => row.state?.trim().toLowerCase() === state.trim().toLowerCase());
   console.log('[getCountyCityOptions] After state match:', stateMatches.length);
 
-  const filtered = stateMatches.filter(row => subsidiaryMatches(row.subsidiary, subsidiary));
-  console.log('[getCountyCityOptions] After subsidiary match:', filtered.length);
+  const filtered = stateMatches.filter(row => {
+    const subsidiarMatch = subsidiaryMatches(row.subsidiary, subsidiary);
+    const licenseTypeMatch = validateLicenseType(row.license_type, permitType);
+    return subsidiarMatch && licenseTypeMatch;
+  });
+  console.log('[getCountyCityOptions] After subsidiary and license type match:', filtered.length);
 
   const uniqueMap = new Map<string, { title: string; qpName: string | null; qpEmail: string | null; spItemId: string | null }>();
   filtered.forEach(row => {
@@ -153,7 +183,7 @@ export async function getQPForSelection(
 
   let query = supabase
     .from("licensing_cache")
-    .select("sp_item_id, qp_name, qp_email, subsidiary, state, county_city_title")
+    .select("sp_item_id, qp_name, qp_email, subsidiary, state, county_city_title, license_type")
     .eq("source_list", sourceList)
     .in("status", ["Active", "Pending"]);
 
@@ -172,7 +202,14 @@ export async function getQPForSelection(
   const stateMatches = data.filter(row => row.state?.trim().toLowerCase() === state.trim().toLowerCase());
   console.log('[getQPForSelection] After state match:', stateMatches.length);
 
-  const match = stateMatches.find(row => subsidiaryMatches(row.subsidiary, subsidiary));
+  const filtered = stateMatches.filter(row => {
+    const subsidiarMatch = subsidiaryMatches(row.subsidiary, subsidiary);
+    const licenseTypeMatch = validateLicenseType(row.license_type, permitType);
+    return subsidiarMatch && licenseTypeMatch;
+  });
+  console.log('[getQPForSelection] After subsidiary and license type match:', filtered.length);
+
+  const match = filtered[0];
   console.log('[getQPForSelection] Match found:', match ? 'yes' : 'no');
 
   if (!match) {

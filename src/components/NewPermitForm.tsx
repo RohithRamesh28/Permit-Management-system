@@ -256,6 +256,12 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
     setSubmitting(true);
 
     try {
+      if (!qpName || !qpEmail) {
+        alert('No valid license found for this permit type, location, and performing entity. Please verify your selections or contact administrator.');
+        setSubmitting(false);
+        return;
+      }
+
       const permitId = generatePermitId();
 
       const permitJurisdiction = permitLevel === "State"
