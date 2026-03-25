@@ -922,7 +922,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
 
                 <div className={`border border-gray-200 rounded-md p-4 transition-opacity ${!requiresSignature ? 'opacity-50 bg-gray-50' : ''}`}>
                   <h3 className="text-xs font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                    Document to Sign
+                    Permitting Application
                     {!requiresSignature && <Lock size={14} className="text-gray-400" />}
                   </h3>
                   <label className={`flex flex-col items-center justify-center gap-2 px-3 py-5 border-2 border-dashed border-gray-300 rounded-md ${requiresSignature ? 'cursor-pointer hover:bg-gray-50' : 'cursor-not-allowed'} transition-colors`}>
