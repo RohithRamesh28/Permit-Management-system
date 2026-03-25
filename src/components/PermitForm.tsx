@@ -7,6 +7,7 @@ import { generatePermitPDF, PermitFormData, downloadPDF } from '../services/pdfG
 import { sendSubmissionNotification, sendApprovalNotification, sendRejectionNotification } from '../services/powerAutomate';
 import SearchableDropdown from './SearchableDropdown';
 import DateInput from './DateInput';
+import { useApprovers, ApproverInfo } from '../hooks/useApprovers';
 
 interface PermitFormProps {
   mode: 'submit' | 'approve' | 'rejected';
@@ -19,6 +20,7 @@ interface FormData {
   workType: string;
   requesterName: string;
   requesterEmail: string;
+  approverName: string;
   site: string;
   dateNeeded: string;
   expiryDate: string;
@@ -34,6 +36,7 @@ export default function PermitForm({ mode, permitId, onNavigate }: PermitFormPro
     workType: '',
     requesterName: '',
     requesterEmail: '',
+    approverName: '',
     site: '',
     dateNeeded: '',
     expiryDate: '',
@@ -55,6 +58,8 @@ export default function PermitForm({ mode, permitId, onNavigate }: PermitFormPro
   const [existingRejectionNote, setExistingRejectionNote] = useState('');
   const [permitIdStr, setPermitIdStr] = useState('');
   const [signatureDataUrl, setSignatureDataUrl] = useState<string | undefined>();
+  const [selectedApprover, setSelectedApprover] = useState<ApproverInfo | null>(null);
+  const { approvers, loading: loadingApprovers } = useApprovers();
 
   useEffect(() => {
     if (account) {
@@ -126,6 +131,7 @@ export default function PermitForm({ mode, permitId, onNavigate }: PermitFormPro
           workType: data.type_of_permit || '',
           requesterName: data.requestor || '',
           requesterEmail: data.requestor || '',
+          approverName: data.approver_name || '',
           site: data.city || '',
           dateNeeded: data.date_of_project_commencement || '',
           expiryDate: data.estimated_date_of_completion || '',
@@ -133,6 +139,15 @@ export default function PermitForm({ mode, permitId, onNavigate }: PermitFormPro
           safetyMeasures: data.detailed_sow || '',
           requiresSignature: data.requires_signature || false,
         });
+
+        if (data.approver_name) {
+          setSelectedApprover({
+            fullName: data.approver_name,
+            businessEmail: data.approver_email || '',
+            managerEmail: data.approver_manager_email || null,
+            divisionManagerEmail: data.approver_division_manager_email || null,
+          });
+        }
 
         setPermitIdStr(data.permit_id || '');
         setSignatureDataUrl(data.signature_data_url || undefined);
@@ -251,6 +266,10 @@ export default function PermitForm({ mode, permitId, onNavigate }: PermitFormPro
         detailed_sow: formData.workDescription,
         status: 'Pending Approval',
         requires_signature: formData.requiresSignature,
+        approver_name: selectedApprover?.fullName || null,
+        approver_email: selectedApprover?.businessEmail || null,
+        approver_manager_email: selectedApprover?.managerEmail || null,
+        approver_division_manager_email: selectedApprover?.divisionManagerEmail || null,
       };
 
       if (signatureDataUrl) {
@@ -600,6 +619,26 @@ export default function PermitForm({ mode, permitId, onNavigate }: PermitFormPro
                       required
                       readOnly={mode === 'approve'}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent disabled:bg-gray-100"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Approver <span className="text-red-500">*</span>
+                    </label>
+                    <SearchableDropdown
+                      name="approverName"
+                      options={approvers.map((a) => a.fullName)}
+                      value={formData.approverName}
+                      onChange={(val) => {
+                        setFormData((prev) => ({ ...prev, approverName: val }));
+                        const approver = approvers.find((a) => a.fullName === val);
+                        setSelectedApprover(approver || null);
+                      }}
+                      placeholder="Search for an approver..."
+                      disabled={mode === 'approve'}
+                      required
+                      loading={loadingApprovers}
                     />
                   </div>
                 </div>
