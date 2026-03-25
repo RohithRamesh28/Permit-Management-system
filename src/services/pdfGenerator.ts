@@ -12,8 +12,9 @@ export interface PermitFormData {
   type_of_permit: string;
   utility_provider?: string;
   state: string;
-  county_or_parish: string;
-  city: string;
+  permit_jurisdiction?: string;
+  county_or_parish?: string;
+  city?: string;
   property_owner: string;
   end_customer: string;
   project_value: string;
@@ -195,9 +196,12 @@ export const generatePermitPDF = (formData: PermitFormData): Blob => {
   }
 
   tempY = addField('State', formData.state, margin, yPos, col1Width);
-  tempY2 = addField('County', formData.county_or_parish, col2X, yPos, col1Width);
-  tempY3 = addField('City', formData.city, col3X, yPos, col1Width);
-  yPos = Math.max(tempY, tempY2, tempY3) + 2;
+  if (formData.permit_jurisdiction && formData.permit_jurisdiction !== formData.state) {
+    tempY2 = addField('Jurisdiction', formData.permit_jurisdiction, col2X, yPos, contentWidth - col1Width - margin);
+    yPos = Math.max(tempY, tempY2) + 2;
+  } else {
+    yPos = tempY + 2;
+  }
 
   tempY = addField('Property Owner', formData.property_owner, margin, yPos, col1Width);
   tempY2 = addField('End Customer', formData.end_customer, col2X, yPos, col1Width);

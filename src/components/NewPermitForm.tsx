@@ -6,9 +6,9 @@ import { useSharePointJobs } from '../hooks/useSharePointJobs';
 import { useSharePointJobDetails } from '../hooks/useSharePointJobDetails';
 import { useAuth } from '../contexts/AuthContext';
 import { useQualifiedPerson } from '../hooks/useQualifiedPerson';
-import { US_STATES_AND_TERRITORIES } from '../utils/usStates';
 import { getCurrentDateInMMDDYYYY } from '../utils/dateFormatters';
 import DateInput from './DateInput';
+import { getAvailableStates, getCountyCityOptions, getQPForSelection } from '../services/licensingService';
 
 interface NewPermitFormProps {
   onNavigate: (view: string) => void;
@@ -17,17 +17,12 @@ interface NewPermitFormProps {
 interface FormData {
   requestor: string;
   requester_type: string;
-  permit_jurisdiction_type: string;
   ontivity_project_number: string;
   performing_entity: string;
   date_of_request: string;
   date_of_project_commencement: string;
   estimated_date_of_completion: string;
-  type_of_permit: string;
   utility_provider: string;
-  state: string;
-  county_or_parish: string;
-  city: string;
   property_owner: string;
   end_customer: string;
   project_value: string;
@@ -38,7 +33,7 @@ interface FormData {
 export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
   const { jobs, loading: jobsLoading } = useSharePointJobs();
   const { userName, userEmail } = useAuth();
-  const { qpInfo, loading: qpLoading } = useQualifiedPerson(userEmail);
+  const { qpInfo, loading: qpManagerLoading } = useQualifiedPerson(userEmail);
 
   const [selectedJobTitle, setSelectedJobTitle] = useState<string | null>(null);
   const { details: jobDetails, loading: jobDetailsLoading } = useSharePointJobDetails(selectedJobTitle);
@@ -47,23 +42,33 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
   const [formData, setFormData] = useState<FormData>({
     requestor: userName || '',
     requester_type: '',
-    permit_jurisdiction_type: 'State',
     ontivity_project_number: '',
     performing_entity: '',
     date_of_request: getCurrentDateInMMDDYYYY(),
     date_of_project_commencement: '',
     estimated_date_of_completion: '',
-    type_of_permit: '',
     utility_provider: '',
-    state: '',
-    county_or_parish: '',
-    city: '',
     property_owner: '',
     end_customer: '',
     project_value: '',
     actual_date_of_completion: '',
     detailed_sow: '',
   });
+
+  const [permitLevel, setPermitLevel] = useState<"State" | "CountyCity">("State");
+  const [permitType, setPermitType] = useState<"General" | "Electrical" | "Specialty" | null>(null);
+  const [selectedState, setSelectedState] = useState<string | null>(null);
+  const [selectedCountyCityTitle, setSelectedCountyCityTitle] = useState<string | null>(null);
+  const [availableStates, setAvailableStates] = useState<string[]>([]);
+  const [availableCountyCities, setAvailableCountyCities] = useState<string[]>([]);
+  const [qpName, setQpName] = useState<string | null>(null);
+  const [qpEmail, setQpEmail] = useState<string | null>(null);
+  const [matchedItemId, setMatchedItemId] = useState<string | null>(null);
+  const [licenseListUsed, setLicenseListUsed] = useState<string | null>(null);
+  const [statesLoading, setStatesLoading] = useState(false);
+  const [countiesLoading, setCountiesLoading] = useState(false);
+  const [qpLoading, setQpLoading] = useState(false);
+  const [statesError, setStatesError] = useState<string | null>(null);
 
   useEffect(() => {
     if (userName) {
@@ -97,6 +102,102 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const loadStates = async () => {
+    if (!permitType || !formData.performing_entity) return;
+    setStatesLoading(true);
+    setStatesError(null);
+    setAvailableStates([]);
+    setSelectedState(null);
+    setSelectedCountyCityTitle(null);
+    setQpName(null);
+    setQpEmail(null);
+
+    const states = await getAvailableStates(permitLevel, permitType, formData.performing_entity);
+    setAvailableStates(states);
+    if (states.length === 0) {
+      setStatesError("No active licenses found for this combination. Contact admin.");
+    }
+    setStatesLoading(false);
+  };
+
+  const loadCountyCityOptions = async () => {
+    if (!selectedState || !permitType) return;
+    setCountiesLoading(true);
+    const options = await getCountyCityOptions(permitType, formData.performing_entity, selectedState);
+    setAvailableCountyCities(options);
+    if (options.length > 0) {
+      setSelectedCountyCityTitle(options[0]);
+    }
+    setCountiesLoading(false);
+  };
+
+  const loadQP = async () => {
+    if (!permitType || !formData.performing_entity || !selectedState) return;
+    if (permitLevel === "CountyCity" && !selectedCountyCityTitle) return;
+
+    setQpLoading(true);
+    const result = await getQPForSelection(
+      permitLevel,
+      permitType,
+      formData.performing_entity,
+      selectedState,
+      permitLevel === "CountyCity" ? selectedCountyCityTitle! : undefined
+    );
+    setQpName(result.qpName);
+    setQpEmail(result.qpEmail);
+    setMatchedItemId(result.matchedItemId);
+    setLicenseListUsed(result.sourceList);
+    setQpLoading(false);
+  };
+
+  useEffect(() => {
+    if (permitType && formData.performing_entity) {
+      loadStates();
+    }
+  }, [permitType, formData.performing_entity, permitLevel]);
+
+  useEffect(() => {
+    if (selectedState && permitLevel === "CountyCity") {
+      loadCountyCityOptions();
+    } else if (selectedState && permitLevel === "State") {
+      loadQP();
+    }
+  }, [selectedState, permitLevel]);
+
+  useEffect(() => {
+    if (selectedCountyCityTitle && permitLevel === "CountyCity") {
+      loadQP();
+    }
+  }, [selectedCountyCityTitle]);
+
+  const handlePermitLevelChange = (level: "State" | "CountyCity") => {
+    setPermitLevel(level);
+    setPermitType(null);
+    setSelectedState(null);
+    setSelectedCountyCityTitle(null);
+    setAvailableStates([]);
+    setAvailableCountyCities([]);
+    setQpName(null);
+    setQpEmail(null);
+    setStatesError(null);
+  };
+
+  const handlePermitTypeChange = (type: "General" | "Electrical" | "Specialty") => {
+    setPermitType(type);
+    setSelectedState(null);
+    setSelectedCountyCityTitle(null);
+    setAvailableStates([]);
+    setAvailableCountyCities([]);
+    setQpName(null);
+    setQpEmail(null);
+    setStatesError(null);
+    if (type === "Electrical") {
+      loadStates();
+    } else {
+      loadStates();
+    }
   };
 
   const handleDateChange = (name: string, value: string) => {
@@ -137,6 +238,16 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
     try {
       const permitId = generatePermitId();
 
+      const permitJurisdiction = permitLevel === "State"
+        ? selectedState
+        : `${selectedCountyCityTitle}, ${selectedState}`;
+
+      const permitTypeDisplay = permitType === "General"
+        ? "General Permit"
+        : permitType === "Electrical"
+        ? "Electrical Permit"
+        : "Specialty/Tower Permit";
+
       const { data: permitData, error: permitError } = await supabase
         .from('permits')
         .insert([
@@ -145,17 +256,16 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
             requestor: formData.requestor,
             requester_type: formData.requester_type,
             requester_email: userEmail,
-            permit_jurisdiction_type: formData.permit_jurisdiction_type,
+            permit_jurisdiction_type: permitLevel === "State" ? "State" : "County/City",
             ontivity_project_number: formData.ontivity_project_number,
             performing_entity: formData.performing_entity,
             date_of_request: formData.date_of_request,
             date_of_project_commencement: formData.date_of_project_commencement,
             estimated_date_of_completion: formData.estimated_date_of_completion,
-            type_of_permit: formData.type_of_permit,
-            utility_provider: formData.type_of_permit === 'Electrical Permit' ? formData.utility_provider : null,
-            state: formData.state,
-            county_or_parish: formData.permit_jurisdiction_type === 'County/City' ? formData.county_or_parish : null,
-            city: formData.permit_jurisdiction_type === 'County/City' ? formData.city : null,
+            type_of_permit: permitTypeDisplay,
+            utility_provider: permitType === 'Electrical' ? formData.utility_provider : null,
+            state: selectedState,
+            permit_jurisdiction: permitJurisdiction,
             property_owner: formData.property_owner,
             end_customer: formData.end_customer,
             project_value: parseFloat(formData.project_value) || 0,
@@ -163,6 +273,10 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
             detailed_sow: formData.detailed_sow,
             status: 'Pending Approval',
             requires_signature: requiresSignature,
+            qp_name: qpName,
+            qp_email: qpEmail,
+            license_list_used: licenseListUsed,
+            matched_license_item_id: matchedItemId,
           },
         ])
         .select()
@@ -264,11 +378,10 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
         date_of_request: formData.date_of_request,
         date_of_project_commencement: formData.date_of_project_commencement,
         estimated_date_of_completion: formData.estimated_date_of_completion,
-        type_of_permit: formData.type_of_permit,
+        type_of_permit: permitTypeDisplay,
         utility_provider: formData.utility_provider || '',
-        state: formData.state,
-        county_or_parish: formData.county_or_parish,
-        city: formData.city,
+        state: selectedState,
+        permit_jurisdiction: permitJurisdiction,
         property_owner: formData.property_owner,
         end_customer: formData.end_customer,
         project_value: parseInt(formData.project_value) || 0,
@@ -379,7 +492,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
                     Qualified Person (Manager) <span className="text-red-500">*</span>
-                    {qpLoading && <Loader2 size={12} className="text-blue-500 animate-spin" />}
+                    {qpManagerLoading && <Loader2 size={12} className="text-blue-500 animate-spin" />}
                   </label>
                   <input
                     type="text"
@@ -396,31 +509,31 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
 
               <div className="border-t border-gray-200 pt-4 pb-4">
                 <label className="block text-xs font-medium text-gray-700 mb-2">
-                  Permit Jurisdiction Type <span className="text-red-500">*</span>
+                  Permit Level <span className="text-red-500">*</span>
                 </label>
-                <div className="flex gap-6">
-                  <label className="flex items-center cursor-pointer">
-                    <input
-                      type="radio"
-                      name="permit_jurisdiction_type"
-                      value="State"
-                      checked={formData.permit_jurisdiction_type === 'State'}
-                      onChange={handleInputChange}
-                      className="w-4 h-4 text-[#0072BC] border-gray-300 focus:ring-[#0072BC]"
-                    />
-                    <span className="ml-2 text-sm text-gray-700">State Permit</span>
-                  </label>
-                  <label className="flex items-center cursor-pointer">
-                    <input
-                      type="radio"
-                      name="permit_jurisdiction_type"
-                      value="County/City"
-                      checked={formData.permit_jurisdiction_type === 'County/City'}
-                      onChange={handleInputChange}
-                      className="w-4 h-4 text-[#0072BC] border-gray-300 focus:ring-[#0072BC]"
-                    />
-                    <span className="ml-2 text-sm text-gray-700">County/City Permit</span>
-                  </label>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handlePermitLevelChange("State")}
+                    className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                      permitLevel === "State"
+                        ? "bg-blue-600 text-white"
+                        : "bg-white text-gray-600 border border-gray-300 hover:bg-gray-50"
+                    }`}
+                  >
+                    State
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handlePermitLevelChange("CountyCity")}
+                    className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                      permitLevel === "CountyCity"
+                        ? "bg-blue-600 text-white"
+                        : "bg-white text-gray-600 border border-gray-300 hover:bg-gray-50"
+                    }`}
+                  >
+                    County / City
+                  </button>
                 </div>
               </div>
 
@@ -502,25 +615,52 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                <div className={`${!formData.performing_entity ? 'opacity-50 pointer-events-none' : ''}`}>
+                  <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
                     Type of Permit <span className="text-red-500">*</span>
+                    {!formData.performing_entity && <Lock size={12} className="text-gray-400" />}
                   </label>
-                  <select
-                    name="type_of_permit"
-                    value={formData.type_of_permit}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
-                  >
-                    <option value="">Select type</option>
-                    <option value="Electrical Permit">Electrical Permit</option>
-                    <option value="Specialty/Tower Permit">Specialty/Tower Permit</option>
-                    <option value="General Permit">General Permit</option>
-                  </select>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      disabled={!formData.performing_entity}
+                      onClick={() => handlePermitTypeChange("General")}
+                      className={`px-3 py-2 text-xs font-medium rounded-md transition-colors ${
+                        permitType === "General"
+                          ? "bg-blue-600 text-white"
+                          : "bg-white text-gray-600 border border-gray-300 hover:bg-gray-50"
+                      }`}
+                    >
+                      General Permit
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!formData.performing_entity}
+                      onClick={() => handlePermitTypeChange("Electrical")}
+                      className={`px-3 py-2 text-xs font-medium rounded-md transition-colors ${
+                        permitType === "Electrical"
+                          ? "bg-blue-600 text-white"
+                          : "bg-white text-gray-600 border border-gray-300 hover:bg-gray-50"
+                      }`}
+                    >
+                      Electrical Permit
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!formData.performing_entity}
+                      onClick={() => handlePermitTypeChange("Specialty")}
+                      className={`px-3 py-2 text-xs font-medium rounded-md transition-colors ${
+                        permitType === "Specialty"
+                          ? "bg-blue-600 text-white"
+                          : "bg-white text-gray-600 border border-gray-300 hover:bg-gray-50"
+                      }`}
+                    >
+                      Specialty Permit
+                    </button>
+                  </div>
                 </div>
 
-                {formData.type_of_permit === 'Electrical Permit' ? (
+                {permitType === 'Electrical' && (
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">
                       Utility Provider <span className="text-red-500">*</span>
@@ -535,67 +675,79 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
                     />
                   </div>
-                ) : (
-                  <div></div>
                 )}
               </div>
 
               <div className="space-y-4">
-                <div className={`grid grid-cols-1 ${formData.permit_jurisdiction_type === 'County/City' ? 'md:grid-cols-3' : 'md:grid-cols-1'} gap-4`}>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      State <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      name="state"
-                      value={formData.state}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
-                    >
-                      <option value="">Select state</option>
-                      {US_STATES_AND_TERRITORIES.map((state) => (
-                        <option key={state.value} value={state.label}>
-                          {state.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {formData.permit_jurisdiction_type === 'County/City' && (
-                    <>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                          County <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          name="county_or_parish"
-                          value={formData.county_or_parish}
-                          onChange={handleInputChange}
-                          required
-                          placeholder="Enter county name"
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                          City <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          name="city"
-                          value={formData.city}
-                          onChange={handleInputChange}
-                          required
-                          placeholder="e.g., Los Angeles"
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
-                        />
-                      </div>
-                    </>
+                <div className={`${!permitType ? 'opacity-50 pointer-events-none' : ''}`}>
+                  <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
+                    State <span className="text-red-500">*</span>
+                    {!permitType && <Lock size={12} className="text-gray-400" />}
+                    {statesLoading && <Loader2 size={12} className="text-blue-500 animate-spin" />}
+                  </label>
+                  <SearchableDropdown
+                    name="state"
+                    value={selectedState || ""}
+                    onChange={(value) => setSelectedState(value)}
+                    options={availableStates}
+                    placeholder="Select state..."
+                    required
+                    loading={statesLoading}
+                    disabled={!permitType}
+                  />
+                  {statesError && (
+                    <p className="text-[10px] text-amber-600 mt-1">{statesError}</p>
                   )}
                 </div>
+
+                {permitLevel === 'CountyCity' && selectedState && (
+                  <div className={`${countiesLoading ? 'opacity-50' : ''}`}>
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
+                      County / City <span className="text-red-500">*</span>
+                      {countiesLoading && <Loader2 size={12} className="text-blue-500 animate-spin" />}
+                    </label>
+                    <SearchableDropdown
+                      name="county_city"
+                      value={selectedCountyCityTitle || ""}
+                      onChange={(value) => setSelectedCountyCityTitle(value)}
+                      options={availableCountyCities}
+                      placeholder="Select county/city..."
+                      required
+                      loading={countiesLoading}
+                    />
+                  </div>
+                )}
+
+                {selectedState && (permitLevel === "State" || (permitLevel === "CountyCity" && selectedCountyCityTitle)) && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-md border border-gray-200">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
+                        QP Name
+                        {qpLoading && <Loader2 size={12} className="text-blue-500 animate-spin" />}
+                      </label>
+                      <input
+                        type="text"
+                        value={qpName || 'Loading...'}
+                        readOnly
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed"
+                      />
+                      {!qpName && !qpLoading && (
+                        <p className="text-[10px] text-amber-600 mt-1">QP unavailable — contact admin</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        QP Email
+                      </label>
+                      <input
+                        type="text"
+                        value={qpEmail || 'N/A'}
+                        readOnly
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed"
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>

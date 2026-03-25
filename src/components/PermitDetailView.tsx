@@ -59,8 +59,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         type_of_permit: permit.type_of_permit || '',
         utility_provider: permit.utility_provider || '',
         state: permit.state || '',
-        county_or_parish: permit.county_or_parish || '',
-        city: permit.city || '',
+        permit_jurisdiction: permit.permit_jurisdiction || '',
         property_owner: permit.property_owner || '',
         end_customer: permit.end_customer || '',
         project_value: permit.project_value?.toString() || '',
@@ -229,8 +228,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         type_of_permit: permit.type_of_permit,
         utility_provider: permit.utility_provider || '',
         state: permit.state,
-        county_or_parish: permit.county_or_parish,
-        city: permit.city,
+        permit_jurisdiction: permit.permit_jurisdiction || permit.state,
         property_owner: permit.property_owner,
         end_customer: permit.end_customer,
         project_value: permit.project_value,
@@ -317,8 +315,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         type_of_permit: permit.type_of_permit,
         utility_provider: permit.utility_provider || '',
         state: permit.state,
-        county_or_parish: permit.county_or_parish,
-        city: permit.city,
+        permit_jurisdiction: permit.permit_jurisdiction || permit.state,
         property_owner: permit.property_owner,
         end_customer: permit.end_customer,
         project_value: permit.project_value,
@@ -404,8 +401,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         type_of_permit: editFormData.type_of_permit,
         utility_provider: editFormData.type_of_permit === 'Electrical Permit' ? editFormData.utility_provider : null,
         state: editFormData.state,
-        county_or_parish: editFormData.permit_jurisdiction_type === 'County/City' ? editFormData.county_or_parish : null,
-        city: editFormData.permit_jurisdiction_type === 'County/City' ? editFormData.city : null,
+        permit_jurisdiction: editFormData.permit_jurisdiction || editFormData.state,
         property_owner: editFormData.property_owner,
         end_customer: editFormData.end_customer,
         project_value: parseFloat(editFormData.project_value) || 0,
@@ -447,8 +443,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         type_of_permit: editFormData.type_of_permit,
         utility_provider: editFormData.utility_provider || '',
         state: editFormData.state,
-        county_or_parish: editFormData.county_or_parish,
-        city: editFormData.city,
+        permit_jurisdiction: editFormData.permit_jurisdiction || editFormData.state,
         property_owner: editFormData.property_owner,
         end_customer: editFormData.end_customer,
         project_value: parseFloat(editFormData.project_value) || 0,
@@ -787,23 +782,15 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                             </div>
                           )}
                         </div>
-                        <div className={`grid ${(permit.permit_jurisdiction_type === 'County/City' || !permit.permit_jurisdiction_type) ? 'grid-cols-3' : 'grid-cols-1'} gap-4`}>
+                        <div className="grid grid-cols-2 gap-4">
                           <div>
                             <p className="text-sm text-gray-500">State</p>
                             <p className="text-gray-900 font-medium">{permit.state}</p>
                           </div>
-                          {(permit.permit_jurisdiction_type === 'County/City' || !permit.permit_jurisdiction_type) && (
-                            <>
-                              <div>
-                                <p className="text-sm text-gray-500">County/Parish</p>
-                                <p className="text-gray-900 font-medium">{permit.county_or_parish}</p>
-                              </div>
-                              <div>
-                                <p className="text-sm text-gray-500">City</p>
-                                <p className="text-gray-900 font-medium">{permit.city}</p>
-                              </div>
-                            </>
-                          )}
+                          <div>
+                            <p className="text-sm text-gray-500">Jurisdiction</p>
+                            <p className="text-gray-900 font-medium">{permit.permit_jurisdiction || permit.state}</p>
+                          </div>
                         </div>
                         <div className="grid grid-cols-3 gap-4">
                           <div>
@@ -1020,7 +1007,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                       </div>
 
                       <div className="space-y-4 mt-6">
-                        <div className={`grid grid-cols-1 ${editFormData?.permit_jurisdiction_type === 'County/City' ? 'md:grid-cols-3' : 'md:grid-cols-1'} gap-4`}>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                               State <span className="text-red-500">*</span>
@@ -1042,37 +1029,20 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                           </div>
 
                           {editFormData?.permit_jurisdiction_type === 'County/City' && (
-                            <>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                  County <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                  type="text"
-                                  name="county_or_parish"
-                                  value={editFormData?.county_or_parish || ''}
-                                  onChange={handleEditInputChange}
-                                  required
-                                  placeholder="Enter county name"
-                                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
-                                />
-                              </div>
-
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                  City <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                  type="text"
-                                  name="city"
-                                  value={editFormData?.city || ''}
-                                  onChange={handleEditInputChange}
-                                  required
-                                  placeholder="e.g., Los Angeles"
-                                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
-                                />
-                              </div>
-                            </>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                County / City <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                name="permit_jurisdiction"
+                                value={editFormData?.permit_jurisdiction || ''}
+                                onChange={handleEditInputChange}
+                                required
+                                placeholder="e.g., City of Los Angeles, CA"
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                              />
+                            </div>
                           )}
                         </div>
 
