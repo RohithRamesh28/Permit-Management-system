@@ -738,7 +738,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                 )}
 
                 {selectedState && (permitLevel === "State" || (permitLevel === "CountyCity" && selectedCountyCityTitle)) && (
-                  <div className="bg-gray-50 p-4 rounded-md border border-gray-200 space-y-4">
+                  <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
@@ -757,34 +757,22 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                       </div>
                       <div>
                         <label className="block text-xs font-medium text-gray-700 mb-1">
-                          QP Email
+                          Approver <span className="text-red-500">*</span>
                         </label>
-                        <input
-                          type="text"
-                          value={qpEmail || 'N/A'}
-                          readOnly
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white text-gray-600 cursor-not-allowed"
+                        <SearchableDropdown
+                          name="approverName"
+                          options={approvers.map((a) => a.fullName)}
+                          value={approverName}
+                          onChange={(val) => {
+                            setApproverName(val);
+                            const approver = approvers.find((a) => a.fullName === val);
+                            setSelectedApprover(approver || null);
+                          }}
+                          placeholder="Search for an approver..."
+                          required
+                          loading={loadingApprovers}
                         />
                       </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                        Approver <span className="text-red-500">*</span>
-                      </label>
-                      <SearchableDropdown
-                        name="approverName"
-                        options={approvers.map((a) => a.fullName)}
-                        value={approverName}
-                        onChange={(val) => {
-                          setApproverName(val);
-                          const approver = approvers.find((a) => a.fullName === val);
-                          setSelectedApprover(approver || null);
-                        }}
-                        placeholder="Search for an approver..."
-                        required
-                        loading={loadingApprovers}
-                      />
                     </div>
                   </div>
                 )}
