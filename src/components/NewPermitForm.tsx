@@ -9,6 +9,7 @@ import { useQualifiedPerson } from '../hooks/useQualifiedPerson';
 import { getCurrentDateInMMDDYYYY } from '../utils/dateFormatters';
 import DateInput from './DateInput';
 import { getAvailableStates, getCountyCityOptions, getQPForSelection } from '../services/licensingService';
+import { useApprovers, ApproverInfo } from '../hooks/useApprovers';
 
 interface NewPermitFormProps {
   onNavigate: (view: string) => void;
@@ -34,6 +35,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
   const { jobs, loading: jobsLoading } = useSharePointJobs();
   const { userName, userEmail } = useAuth();
   const { qpInfo, loading: qpManagerLoading } = useQualifiedPerson(userEmail);
+  const { approvers, loading: loadingApprovers } = useApprovers();
 
   const [selectedJobTitle, setSelectedJobTitle] = useState<string | null>(null);
   const { details: jobDetails, loading: jobDetailsLoading } = useSharePointJobDetails(selectedJobTitle);
@@ -98,6 +100,8 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
   const [documentToSign, setDocumentToSign] = useState<File | null>(null);
   const [requiresSignature, setRequiresSignature] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [selectedApprover, setSelectedApprover] = useState<ApproverInfo | null>(null);
+  const [approverName, setApproverName] = useState<string>('');
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -303,6 +307,10 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
             qp_email: qpEmail,
             license_list_used: licenseListUsed,
             matched_license_item_id: matchedItemId,
+            approver_name: selectedApprover?.fullName || null,
+            approver_email: selectedApprover?.businessEmail || null,
+            approver_manager_email: selectedApprover?.managerEmail || null,
+            approver_division_manager_email: selectedApprover?.divisionManagerEmail || null,
           },
         ])
         .select()
@@ -730,34 +738,55 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                 )}
 
                 {selectedState && (permitLevel === "State" || (permitLevel === "CountyCity" && selectedCountyCityTitle)) && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-md border border-gray-200">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
-                        QP Name
-                        {qpLoading && <Loader2 size={12} className="text-blue-500 animate-spin" />}
-                      </label>
-                      <input
-                        type="text"
-                        value={qpName || 'Loading...'}
-                        readOnly
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed"
-                      />
-                      {!qpName && !qpLoading && (
-                        <p className="text-[10px] text-amber-600 mt-1">QP unavailable — contact admin</p>
-                      )}
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-md border border-gray-200">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
+                          QP Name
+                          {qpLoading && <Loader2 size={12} className="text-blue-500 animate-spin" />}
+                        </label>
+                        <input
+                          type="text"
+                          value={qpName || 'Loading...'}
+                          readOnly
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed"
+                        />
+                        {!qpName && !qpLoading && (
+                          <p className="text-[10px] text-amber-600 mt-1">QP unavailable — contact admin</p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          QP Email
+                        </label>
+                        <input
+                          type="text"
+                          value={qpEmail || 'N/A'}
+                          readOnly
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed"
+                        />
+                      </div>
                     </div>
+
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">
-                        QP Email
+                        Approver <span className="text-red-500">*</span>
                       </label>
-                      <input
-                        type="text"
-                        value={qpEmail || 'N/A'}
-                        readOnly
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed"
+                      <SearchableDropdown
+                        name="approverName"
+                        options={approvers.map((a) => a.fullName)}
+                        value={approverName}
+                        onChange={(val) => {
+                          setApproverName(val);
+                          const approver = approvers.find((a) => a.fullName === val);
+                          setSelectedApprover(approver || null);
+                        }}
+                        placeholder="Search for an approver..."
+                        required
+                        loading={loadingApprovers}
                       />
                     </div>
-                  </div>
+                  </>
                 )}
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
