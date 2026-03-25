@@ -333,3 +333,31 @@ export const mergePDFs = async (permitPdfBlob: Blob, signedDocumentUrl?: string)
   const mergedPdfBytes = await mergedPdf.save();
   return new Blob([mergedPdfBytes], { type: 'application/pdf' });
 };
+
+export const embedSignatureInPDF = async (
+  pdfUrl: string,
+  signatureDataUrl: string,
+  position: { x: number; y: number },
+  signatureSize: { width: number; height: number }
+): Promise<Blob> => {
+  const response = await fetch(pdfUrl);
+  const pdfBytes = await response.arrayBuffer();
+  const pdfDoc = await PDFDocument.load(pdfBytes);
+
+  const signatureImageBytes = await fetch(signatureDataUrl).then(res => res.arrayBuffer());
+  const signatureImage = await pdfDoc.embedPng(signatureImageBytes);
+
+  const pages = pdfDoc.getPages();
+  const firstPage = pages[0];
+  const { height: pageHeight } = firstPage.getSize();
+
+  firstPage.drawImage(signatureImage, {
+    x: position.x,
+    y: pageHeight - position.y - signatureSize.height,
+    width: signatureSize.width,
+    height: signatureSize.height,
+  });
+
+  const modifiedPdfBytes = await pdfDoc.save();
+  return new Blob([modifiedPdfBytes], { type: 'application/pdf' });
+};

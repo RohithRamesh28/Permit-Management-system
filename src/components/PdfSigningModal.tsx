@@ -6,7 +6,7 @@ interface PdfSigningModalProps {
   pdfUrl: string;
   pdfName: string;
   onClose: () => void;
-  onApprove: (signatureData: string, signerName: string, position: { x: number; y: number }) => void;
+  onApprove: (signatureData: string, signerName: string, position: { x: number; y: number }, size: { width: number; height: number }) => void;
   signerName?: string;
 }
 
@@ -193,7 +193,7 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
       return;
     }
 
-    onApprove(signatureDataUrl, signerNameForApproval, signaturePosition);
+    onApprove(signatureDataUrl, signerNameForApproval, signaturePosition, signatureSize);
   };
 
   const handleDrawStart = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {

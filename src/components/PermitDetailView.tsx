@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, CheckCircle, XCircle, FileText, Clock, Eye, PlusCircle, CreditCard as Edit2, AlertCircle, Download, Upload } from 'lucide-react';
 import { supabase, Permit, PermitDocument, PermitAuditLog } from '../lib/supabase';
 import { SignaturePad, SignaturePadRef } from './SignaturePad';
-import { generatePermitPDF, downloadPDF, mergePDFs } from '../services/pdfGenerator';
+import { generatePermitPDF, downloadPDF, mergePDFs, embedSignatureInPDF } from '../services/pdfGenerator';
 import DocumentPreviewModal from './DocumentPreviewModal';
 import PdfSigningModal from './PdfSigningModal';
 import SearchableDropdown from './SearchableDropdown';
@@ -119,17 +119,47 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
     }
   };
 
-  const handlePdfSigningApprove = async (signatureData: string, signerNameFromModal: string, position: { x: number; y: number }) => {
+  const handlePdfSigningApprove = async (signatureData: string, signerNameFromModal: string, position: { x: number; y: number }, size: { width: number; height: number }) => {
     setSignerName(signerNameFromModal);
     setSignaturePosition(position);
     setShowPdfSignModal(false);
+
     const documentToSign = documents.find(doc => doc.document_type === 'to_sign');
     if (documentToSign) {
-      await supabase
-        .from('permits')
-        .update({ signed_document_url: documentToSign.file_url })
-        .eq('id', permitId);
+      try {
+        const signedPdfBlob = await embedSignatureInPDF(
+          documentToSign.file_url,
+          signatureData,
+          position,
+          size
+        );
+
+        const signedFileName = `signed_${Date.now()}_${documentToSign.file_name}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('permit-pdfs')
+          .upload(signedFileName, signedPdfBlob, {
+            contentType: 'application/pdf',
+            upsert: false,
+          });
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('permit-pdfs')
+          .getPublicUrl(signedFileName);
+
+        await supabase
+          .from('permits')
+          .update({
+            signed_document_url: publicUrl,
+            signature_data_url: signatureData
+          })
+          .eq('id', permitId);
+      } catch (error) {
+        console.error('Error creating signed PDF:', error);
+      }
     }
+
     setPdfToSign(null);
     await handleApprove(signatureData);
   };
@@ -1243,7 +1273,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                             className="w-full flex items-center justify-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
                           >
                             <CheckCircle size={18} />
-                            {documents.find(doc => doc.document_type === 'to_sign') ? 'Sign and Approve' : 'Approve'}
+                            {permit.requires_signature ? 'Sign and Approve' : 'Approve'}
                           </button>
                           <button
                             onClick={handleRejectClick}
@@ -1263,7 +1293,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                             className="w-full flex items-center justify-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
                           >
                             <CheckCircle size={18} />
-                            {documents.find(doc => doc.document_type === 'to_sign') ? 'Sign and Approve' : 'Approve'}
+                            {permit.requires_signature ? 'Sign and Approve' : 'Approve'}
                           </button>
                           <button
                             onClick={handleRejectClick}
