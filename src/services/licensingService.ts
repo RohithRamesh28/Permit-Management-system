@@ -1,5 +1,14 @@
 import { supabase } from '../lib/supabase';
 
+const SUBSIDIARY_MAPPING: Record<string, string[]> = {
+  'ETT': ['EasTex Tower LLC', 'EasTex Tower', 'ETT'],
+  'CMS': ['CMS Wireless LLC', 'CMS Wireless', 'CMS'],
+  'ETR': ['Enertech Resources LLC', 'Enertech', 'ETR'],
+  'LEG': ['Legacy Telecommunications LLC', 'Legacy', 'LEG'],
+  'MW': ['Mountain Wireless LLC', 'Mountain Wireless', 'MW'],
+  'ONT': ['Ontivity LLC', 'Ontivity', 'ONT'],
+};
+
 export function selectSourceList(
   permitLevel: "State" | "CountyCity",
   permitType: "General" | "Electrical" | "Specialty"
@@ -11,10 +20,39 @@ export function selectSourceList(
   }
 }
 
+export function normalizeSubsidiary(input: string): string[] {
+  const normalized = input.trim();
+
+  for (const [key, aliases] of Object.entries(SUBSIDIARY_MAPPING)) {
+    for (const alias of aliases) {
+      if (normalized.toLowerCase() === alias.toLowerCase() ||
+          normalized.toLowerCase().includes(alias.toLowerCase()) ||
+          alias.toLowerCase().includes(normalized.toLowerCase())) {
+        return aliases;
+      }
+    }
+  }
+
+  return [normalized];
+}
+
 export function subsidiaryMatches(spValue = "", jobValue = ""): boolean {
-  const a = spValue.toLowerCase().trim();
-  const b = jobValue.toLowerCase().trim();
-  return a.includes(b) || b.includes(a);
+  if (!spValue || !jobValue) return false;
+
+  const spAliases = normalizeSubsidiary(spValue);
+  const jobAliases = normalizeSubsidiary(jobValue);
+
+  for (const spAlias of spAliases) {
+    for (const jobAlias of jobAliases) {
+      const a = spAlias.toLowerCase().trim();
+      const b = jobAlias.toLowerCase().trim();
+      if (a === b || a.includes(b) || b.includes(a)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
 }
 
 export async function getAvailableStates(
@@ -23,6 +61,8 @@ export async function getAvailableStates(
   subsidiary: string
 ): Promise<string[]> {
   const sourceList = selectSourceList(permitLevel, permitType);
+
+  console.log('[getAvailableStates] Query params:', { permitLevel, permitType, subsidiary, sourceList });
 
   const { data, error } = await supabase
     .from("licensing_cache")
@@ -35,8 +75,23 @@ export async function getAvailableStates(
     return [];
   }
 
-  const filtered = data.filter(row => subsidiaryMatches(row.subsidiary, subsidiary));
-  return [...new Set(filtered.map(r => r.state).filter(Boolean))].sort();
+  console.log('[getAvailableStates] Raw data count:', data.length);
+  console.log('[getAvailableStates] Sample subsidiaries from DB:', [...new Set(data.map(r => r.subsidiary))].slice(0, 5));
+
+  const filtered = data.filter(row => {
+    const matches = subsidiaryMatches(row.subsidiary, subsidiary);
+    if (matches) {
+      console.log('[getAvailableStates] Match found:', { dbSubsidiary: row.subsidiary, formSubsidiary: subsidiary });
+    }
+    return matches;
+  });
+
+  console.log('[getAvailableStates] Filtered count:', filtered.length);
+
+  const states = [...new Set(filtered.map(r => r.state?.trim()).filter(Boolean))].sort();
+  console.log('[getAvailableStates] Final states:', states);
+
+  return states;
 }
 
 export async function getCountyCityOptions(
@@ -46,11 +101,12 @@ export async function getCountyCityOptions(
 ): Promise<Array<{ title: string; qpName: string | null; qpEmail: string | null; spItemId: string | null }>> {
   const sourceList = selectSourceList("CountyCity", permitType);
 
+  console.log('[getCountyCityOptions] Query params:', { permitType, subsidiary, state, sourceList });
+
   const { data, error } = await supabase
     .from("licensing_cache")
-    .select("county_city_title, subsidiary, qp_name, qp_email, sp_item_id")
+    .select("county_city_title, subsidiary, qp_name, qp_email, sp_item_id, state")
     .eq("source_list", sourceList)
-    .eq("state", state)
     .in("status", ["Active", "Pending"]);
 
   if (error || !data) {
@@ -58,7 +114,13 @@ export async function getCountyCityOptions(
     return [];
   }
 
-  const filtered = data.filter(row => subsidiaryMatches(row.subsidiary, subsidiary));
+  console.log('[getCountyCityOptions] Raw data count:', data.length);
+
+  const stateMatches = data.filter(row => row.state?.trim().toLowerCase() === state.trim().toLowerCase());
+  console.log('[getCountyCityOptions] After state match:', stateMatches.length);
+
+  const filtered = stateMatches.filter(row => subsidiaryMatches(row.subsidiary, subsidiary));
+  console.log('[getCountyCityOptions] After subsidiary match:', filtered.length);
 
   const uniqueMap = new Map<string, { title: string; qpName: string | null; qpEmail: string | null; spItemId: string | null }>();
   filtered.forEach(row => {
@@ -72,7 +134,10 @@ export async function getCountyCityOptions(
     }
   });
 
-  return Array.from(uniqueMap.values()).sort((a, b) => a.title.localeCompare(b.title));
+  const result = Array.from(uniqueMap.values()).sort((a, b) => a.title.localeCompare(b.title));
+  console.log('[getCountyCityOptions] Final options:', result.length);
+
+  return result;
 }
 
 export async function getQPForSelection(
@@ -84,11 +149,12 @@ export async function getQPForSelection(
 ): Promise<{ qpName: string | null; qpEmail: string | null; matchedItemId: string | null; sourceList: string }> {
   const sourceList = selectSourceList(permitLevel, permitType);
 
+  console.log('[getQPForSelection] Query params:', { permitLevel, permitType, subsidiary, state, countyCityTitle, sourceList });
+
   let query = supabase
     .from("licensing_cache")
-    .select("sp_item_id, qp_name, qp_email, subsidiary")
+    .select("sp_item_id, qp_name, qp_email, subsidiary, state, county_city_title")
     .eq("source_list", sourceList)
-    .eq("state", state)
     .in("status", ["Active", "Pending"]);
 
   if (permitLevel === "CountyCity" && countyCityTitle) {
@@ -101,7 +167,14 @@ export async function getQPForSelection(
     return { qpName: null, qpEmail: null, matchedItemId: null, sourceList };
   }
 
-  const match = data.find(row => subsidiaryMatches(row.subsidiary, subsidiary));
+  console.log('[getQPForSelection] Raw data count:', data.length);
+
+  const stateMatches = data.filter(row => row.state?.trim().toLowerCase() === state.trim().toLowerCase());
+  console.log('[getQPForSelection] After state match:', stateMatches.length);
+
+  const match = stateMatches.find(row => subsidiaryMatches(row.subsidiary, subsidiary));
+  console.log('[getQPForSelection] Match found:', match ? 'yes' : 'no');
+
   if (!match) {
     return { qpName: null, qpEmail: null, matchedItemId: null, sourceList };
   }
