@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { X, CheckCircle, ZoomIn, ZoomOut, Type, PenTool, RotateCcw, Copy, Plus, Trash2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { PDFDocument } from 'pdf-lib';
+import * as pdfjsLib from 'pdfjs-dist';
 
 interface SignatureItem {
   id: string;
@@ -56,32 +57,61 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
 
   const pdfContainerRef = useRef<HTMLDivElement>(null);
   const pdfWrapperRef = useRef<HTMLDivElement>(null);
+  const pdfCanvasRef = useRef<HTMLCanvasElement>(null);
   const drawCanvasRef = useRef<HTMLCanvasElement>(null);
   const isDrawingRef = useRef(false);
   const lastPointRef = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
-    const loadPdfDimensions = async () => {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+  }, []);
+
+  useEffect(() => {
+    const renderPdfToCanvas = async () => {
+      if (!pdfCanvasRef.current) return;
+
       try {
         const response = await fetch(pdfUrl);
         const pdfBytes = await response.arrayBuffer();
-        const pdfDoc = await PDFDocument.load(pdfBytes);
-        const pages = pdfDoc.getPages();
+
+        const pdfDocPdfLib = await PDFDocument.load(pdfBytes);
+        const pages = pdfDocPdfLib.getPages();
         const firstPage = pages[0];
         const { width, height } = firstPage.getSize();
         setPdfDimensions({ width, height });
+
+        const loadingTask = pdfjsLib.getDocument({ data: pdfBytes });
+        const pdfDoc = await loadingTask.promise;
+        const page = await pdfDoc.getPage(1);
 
         const aspectRatio = width / height;
         const previewHeight = 1100;
         const previewWidth = previewHeight * aspectRatio;
         setPreviewDimensions({ width: previewWidth, height: previewHeight });
+
+        const canvas = pdfCanvasRef.current;
+        const context = canvas.getContext('2d');
+        if (!context) return;
+
+        const scale = previewHeight / height;
+        const viewport = page.getViewport({ scale });
+
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+
+        const renderContext = {
+          canvasContext: context,
+          viewport: viewport,
+        };
+
+        await page.render(renderContext).promise;
       } catch (error) {
-        console.error('Error loading PDF dimensions:', error);
+        console.error('Error loading and rendering PDF:', error);
         setPdfDimensions({ width: 612, height: 792 });
       }
     };
 
-    loadPdfDimensions();
+    renderPdfToCanvas();
   }, [pdfUrl]);
 
   useEffect(() => {
@@ -520,13 +550,12 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
             <div
               ref={pdfWrapperRef}
               className="relative bg-white rounded shadow-lg"
-              style={{ width: `${previewDimensions.width}px`, minHeight: `${previewDimensions.height}px` }}
+              style={{ width: `${previewDimensions.width}px`, height: `${previewDimensions.height}px` }}
             >
-              <iframe
-                src={pdfUrl}
-                title={pdfName}
-                className="w-full border-0 rounded"
-                style={{ height: `${previewDimensions.height}px`, pointerEvents: 'none' }}
+              <canvas
+                ref={pdfCanvasRef}
+                className="absolute top-0 left-0 w-full h-full rounded"
+                style={{ pointerEvents: 'none' }}
               />
 
               {cursorPosition && pendingSignatureDataUrl && (
