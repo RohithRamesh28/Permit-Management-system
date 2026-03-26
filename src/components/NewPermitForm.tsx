@@ -834,7 +834,13 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                       </div>
                       <button
                         type="button"
-                        onClick={() => setSendRequestToQp(!sendRequestToQp)}
+                        onClick={() => {
+                          const newValue = !sendRequestToQp;
+                          setSendRequestToQp(newValue);
+                          if (!newValue) {
+                            setSendToQpForSignature(false);
+                          }
+                        }}
                         className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#0072BC] focus:ring-offset-1 ${
                           sendRequestToQp ? 'bg-[#0072BC]' : 'bg-gray-300'
                         }`}
@@ -1096,13 +1102,18 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                           type="checkbox"
                           id="sendToQpForSignature"
                           checked={sendToQpForSignature}
+                          disabled={!sendRequestToQp}
                           onChange={(e) => {
                             setSendToQpForSignature(e.target.checked);
                             setShowSignatureError(false);
                           }}
-                          className="w-3.5 h-3.5 text-[#0072BC] border-gray-300 rounded focus:ring-[#0072BC] flex-shrink-0"
+                          className={`w-3.5 h-3.5 text-[#0072BC] border-gray-300 rounded focus:ring-[#0072BC] flex-shrink-0 ${
+                            !sendRequestToQp ? 'opacity-40 cursor-not-allowed' : ''
+                          }`}
                         />
-                        <label htmlFor="sendToQpForSignature" className="text-xs text-gray-700 cursor-pointer">
+                        <label htmlFor="sendToQpForSignature" className={`text-xs cursor-pointer ${
+                          !sendRequestToQp ? 'text-gray-400' : 'text-gray-700'
+                        }`}>
                           Qualified Person (QP)
                         </label>
                       </div>
