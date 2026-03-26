@@ -145,10 +145,35 @@ async function fetchAllUserManagementItems(
   return allItems;
 }
 
+async function sendFailureEmail(syncType: string, errorMessage: string, supabaseUrl: string, supabaseServiceKey: string) {
+  try {
+    await fetch(`${supabaseUrl}/functions/v1/send-email-notification`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${supabaseServiceKey}`,
+      },
+      body: JSON.stringify({
+        to: "Rohith@katproteh.com",
+        subject: `Sync Failure: ${syncType}`,
+        syncType,
+        errorMessage,
+        timestamp: new Date().toISOString(),
+      }),
+    });
+  } catch (emailError) {
+    console.error("Failed to send failure email:", emailError);
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabase = createClient(supabaseUrl, supabaseKey);
 
   try {
     const tenantId = "3596b7c3-9b4b-4ef8-9dde-39825373af28";
@@ -156,15 +181,20 @@ Deno.serve(async (req: Request) => {
     const clientSecret = "x6k8Q~AEdheL6OYH43fbKGbqQTK9GunLtH.e5aw~";
     const siteUrl = "https://ontivity.sharepoint.com/sites/Permittingsolution";
     const listName = "User Management";
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const MIN_EXPECTED_RECORDS = 40;
 
     const accessToken = await getAppOnlyToken(tenantId, clientId, clientSecret);
     const items = await fetchAllUserManagementItems(accessToken, siteUrl, listName);
 
     console.log(`Fetched ${items.length} items from SharePoint`);
+
+    if (items.length === 0) {
+      throw new Error("No user management data fetched - possible API or connectivity issue");
+    }
+
+    if (items.length < MIN_EXPECTED_RECORDS) {
+      console.warn(`Warning: Only ${items.length} user records fetched, expected at least ${MIN_EXPECTED_RECORDS}`);
+    }
 
     const usersToInsert = items.map((item) => {
       const fields = item.fields || {};
@@ -217,9 +247,14 @@ Deno.serve(async (req: Request) => {
       }
     );
   } catch (error) {
+    const errorMessage = (error as Error).message;
+    console.error("Error syncing user management data:", errorMessage);
+
+    await sendFailureEmail("User Management", errorMessage, supabaseUrl, supabaseKey);
+
     return new Response(
       JSON.stringify({
-        error: (error as Error).message,
+        error: errorMessage,
       }),
       {
         status: 500,

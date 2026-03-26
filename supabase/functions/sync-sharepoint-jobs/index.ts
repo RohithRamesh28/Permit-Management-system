@@ -115,10 +115,35 @@ async function fetchAllSharePointItems(
   return allItems;
 }
 
+async function sendFailureEmail(syncType: string, errorMessage: string, supabaseUrl: string, supabaseServiceKey: string) {
+  try {
+    await fetch(`${supabaseUrl}/functions/v1/send-email-notification`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${supabaseServiceKey}`,
+      },
+      body: JSON.stringify({
+        to: "Rohith@katproteh.com",
+        subject: `Sync Failure: ${syncType}`,
+        syncType,
+        errorMessage,
+        timestamp: new Date().toISOString(),
+      }),
+    });
+  } catch (emailError) {
+    console.error("Failed to send failure email:", emailError);
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   try {
     const tenantId = "3596b7c3-9b4b-4ef8-9dde-39825373af28";
@@ -126,10 +151,7 @@ Deno.serve(async (req: Request) => {
     const clientSecret = "x6k8Q~AEdheL6OYH43fbKGbqQTK9GunLtH.e5aw~";
     const siteUrl = "https://ontivity.sharepoint.com/sites/OntivityJobManagement";
     const listName = "All Divisions Job List";
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const MIN_EXPECTED_RECORDS = 3000;
 
     await supabase
       .from("sync_metadata")
@@ -153,33 +175,46 @@ Deno.serve(async (req: Request) => {
       listName
     );
 
+    if (items.length === 0) {
+      throw new Error("SharePoint returned zero items - possible API or connectivity issue");
+    }
+
+    if (items.length < MIN_EXPECTED_RECORDS) {
+      console.warn(`Warning: Only ${items.length} items fetched, expected at least ${MIN_EXPECTED_RECORDS}`);
+    }
+
     const uniqueItemsMap = new Map<string, SharePointItem>();
     for (const item of items) {
+      if (!item.id || !item.title) {
+        console.warn("Skipping item with missing id or title:", item);
+        continue;
+      }
       uniqueItemsMap.set(item.id, item);
     }
 
+    if (uniqueItemsMap.size === 0) {
+      throw new Error("No valid items to sync after validation");
+    }
+
     const now = new Date().toISOString();
+    const batchSize = 500;
+    const entries = Array.from(uniqueItemsMap.values());
 
-    if (uniqueItemsMap.size > 0) {
-      const batchSize = 500;
-      const entries = Array.from(uniqueItemsMap.values());
+    for (let i = 0; i < entries.length; i += batchSize) {
+      const batch = entries.slice(i, i + batchSize).map((item) => ({
+        sharepoint_id: item.id,
+        job_title: item.title,
+        all_fields: item.allFields,
+        last_synced_at: now,
+        updated_at: now,
+      }));
 
-      for (let i = 0; i < entries.length; i += batchSize) {
-        const batch = entries.slice(i, i + batchSize).map((item) => ({
-          sharepoint_id: item.id,
-          job_title: item.title,
-          all_fields: item.allFields,
-          last_synced_at: now,
-          updated_at: now,
-        }));
+      const { error: upsertError } = await supabase
+        .from("sharepoint_jobs_cache")
+        .upsert(batch, { onConflict: "sharepoint_id" });
 
-        const { error: upsertError } = await supabase
-          .from("sharepoint_jobs_cache")
-          .upsert(batch, { onConflict: "sharepoint_id" });
-
-        if (upsertError) {
-          throw new Error(`Upsert batch failed: ${upsertError.message}`);
-        }
+      if (upsertError) {
+        throw new Error(`Upsert batch failed: ${upsertError.message}`);
       }
     }
 
@@ -206,26 +241,24 @@ Deno.serve(async (req: Request) => {
       }
     );
   } catch (error) {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const errorMessage = (error as Error).message;
 
-    if (supabaseUrl && supabaseServiceKey) {
-      const supabase = createClient(supabaseUrl, supabaseServiceKey);
-      await supabase
-        .from("sync_metadata")
-        .upsert(
-          {
-            sync_type: "sharepoint_jobs",
-            status: `failed: ${(error as Error).message}`,
-            last_synced_at: new Date().toISOString(),
-          },
-          { onConflict: "sync_type" }
-        );
-    }
+    await supabase
+      .from("sync_metadata")
+      .upsert(
+        {
+          sync_type: "sharepoint_jobs",
+          status: `failed: ${errorMessage}`,
+          last_synced_at: new Date().toISOString(),
+        },
+        { onConflict: "sync_type" }
+      );
+
+    await sendFailureEmail("SharePoint Jobs", errorMessage, supabaseUrl, supabaseServiceKey);
 
     return new Response(
       JSON.stringify({
-        error: (error as Error).message,
+        error: errorMessage,
       }),
       {
         status: 500,

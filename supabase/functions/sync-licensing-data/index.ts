@@ -249,6 +249,27 @@ function mapCountyElectricalFields(fields: any): any {
   };
 }
 
+async function sendFailureEmail(syncType: string, errorMessage: string, supabaseUrl: string, supabaseServiceKey: string) {
+  try {
+    await fetch(`${supabaseUrl}/functions/v1/send-email-notification`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${supabaseServiceKey}`,
+      },
+      body: JSON.stringify({
+        to: "Rohith@katproteh.com",
+        subject: `Sync Failure: ${syncType}`,
+        syncType,
+        errorMessage,
+        timestamp: new Date().toISOString(),
+      }),
+    });
+  } catch (emailError) {
+    console.error("Failed to send failure email:", emailError);
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
@@ -257,17 +278,19 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error("Missing Supabase environment variables");
+  }
+
   try {
     const tenantId = "3596b7c3-9b4b-4ef8-9dde-39825373af28";
     const clientId = "c01be167-54b5-4e66-a8a1-8c5303b3430b";
     const clientSecret = "x6k8Q~AEdheL6OYH43fbKGbqQTK9GunLtH.e5aw~";
     const siteUrl = "https://ontivity.sharepoint.com/sites/OntivityLicensing";
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error("Missing Supabase environment variables");
-    }
+    const MIN_EXPECTED_RECORDS = 400;
 
     const siteUrlObj = new URL(siteUrl);
     const hostname = siteUrlObj.hostname;
@@ -361,25 +384,31 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    if (allRows.length > 0) {
-      const batchSize = 500;
-      for (let i = 0; i < allRows.length; i += batchSize) {
-        const batch = allRows.slice(i, i + batchSize);
-        const upsertResponse = await fetch(`${supabaseUrl}/rest/v1/licensing_cache`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${supabaseServiceKey}`,
-            "apikey": supabaseServiceKey,
-            "Prefer": "resolution=merge-duplicates",
-          },
-          body: JSON.stringify(batch),
-        });
+    if (allRows.length === 0) {
+      throw new Error("No licensing data fetched - possible API or connectivity issue");
+    }
 
-        if (!upsertResponse.ok) {
-          const errorText = await upsertResponse.text();
-          console.error(`Failed to upsert batch:`, errorText);
-        }
+    if (allRows.length < MIN_EXPECTED_RECORDS) {
+      console.warn(`Warning: Only ${allRows.length} licensing records fetched, expected at least ${MIN_EXPECTED_RECORDS}`);
+    }
+
+    const batchSize = 500;
+    for (let i = 0; i < allRows.length; i += batchSize) {
+      const batch = allRows.slice(i, i + batchSize);
+      const upsertResponse = await fetch(`${supabaseUrl}/rest/v1/licensing_cache`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${supabaseServiceKey}`,
+          "apikey": supabaseServiceKey,
+          "Prefer": "resolution=merge-duplicates",
+        },
+        body: JSON.stringify(batch),
+      });
+
+      if (!upsertResponse.ok) {
+        const errorText = await upsertResponse.text();
+        throw new Error(`Failed to upsert batch: ${errorText}`);
       }
     }
 
@@ -397,10 +426,14 @@ Deno.serve(async (req: Request) => {
       }
     );
   } catch (error) {
-    console.error("Error syncing licensing data:", error);
+    const errorMessage = (error as Error).message || "Failed to sync licensing data";
+    console.error("Error syncing licensing data:", errorMessage);
+
+    await sendFailureEmail("Licensing Data", errorMessage, supabaseUrl, supabaseServiceKey);
+
     return new Response(
       JSON.stringify({
-        error: error.message || "Failed to sync licensing data",
+        error: errorMessage,
       }),
       {
         status: 500,
