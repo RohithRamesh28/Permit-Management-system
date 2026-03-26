@@ -978,170 +978,167 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
               </div>
             </div>
 
-            <div>
-              <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
-                <p className="text-xs font-medium text-blue-900 mb-2">
-                  The following documents are required to be uploaded for permit compliance:
-                </p>
-                <ul className="text-xs text-blue-800 space-y-0.5 list-disc list-inside">
-                  <li>Pre photos of area that work is being performed</li>
-                  <li>Photos of identification signs at entrance</li>
-                  <li>Photos of work in progress: Trench depth per requirements</li>
-                  <li>Photos of work in progress: Conduit routes</li>
-                  <li>Photos of work in progress: All terminations</li>
-                  <li>Photos of work area upon completion</li>
-                  <li>Photo of permit</li>
-                  <li>Photo of passed inspection (if applicable)</li>
-                  <li>Photo of closed permit</li>
-                </ul>
+            <div className="border border-gray-200 rounded-md p-5 bg-gray-50">
+              <div className={`${showDocumentError ? 'ring-2 ring-red-500' : ''} bg-white rounded-md p-4 mb-4`}>
+                <label className="block text-sm font-semibold text-gray-900 mb-1">
+                  Permit Application <span className="text-red-500">*</span>
+                </label>
+                <p className="text-xs text-gray-600 mb-3">Permit Application is primary</p>
+                <label className={`flex items-center gap-2 px-3 py-2.5 border border-dashed rounded cursor-pointer transition-colors ${
+                  showDocumentError ? 'border-red-400 bg-red-50' : 'border-gray-300 hover:bg-gray-50'
+                }`}>
+                  <Upload size={16} className={showDocumentError ? "text-red-500" : "text-gray-400"} />
+                  <span className={`text-xs ${showDocumentError ? 'text-red-600' : 'text-gray-600'}`}>
+                    {documentToSign ? documentToSign.name : 'Upload PDF'}
+                  </span>
+                  <input
+                    type="file"
+                    accept=".pdf"
+                    onChange={(e) => {
+                      handleDocumentToSignChange(e);
+                      setShowDocumentError(false);
+                    }}
+                    className="hidden"
+                  />
+                </label>
+                {showDocumentError && !documentToSign && (
+                  <p className="text-[10px] text-red-600 mt-1">Required field</p>
+                )}
+                {documentToSign && (
+                  <div className="flex items-center justify-between mt-2 text-[10px] text-gray-600">
+                    <span>{(documentToSign.size / 1024).toFixed(1)} KB</span>
+                    <button
+                      type="button"
+                      onClick={handleRemoveDocumentToSign}
+                      className="text-red-600 hover:text-red-800 font-medium"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
               </div>
 
-              <div className="border border-gray-200 rounded-md p-4 mb-4 bg-gray-50">
-                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <Upload size={16} className="text-gray-600" />
-                  Document Upload
-                </h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-                  <div className={`${showDocumentError ? 'ring-2 ring-red-500' : ''} bg-white rounded-md p-3`}>
-                    <label className="block text-xs font-medium text-gray-700 mb-2">
-                      Permit Application <span className="text-red-500">*</span>
-                    </label>
-                    <label className={`flex items-center gap-2 px-2 py-2 border border-dashed rounded cursor-pointer transition-colors ${
-                      showDocumentError ? 'border-red-400 bg-red-50' : 'border-gray-300 hover:bg-gray-50'
-                    }`}>
-                      <Upload size={16} className={showDocumentError ? "text-red-500" : "text-gray-400"} />
-                      <span className={`text-xs ${showDocumentError ? 'text-red-600' : 'text-gray-600'}`}>
-                        {documentToSign ? documentToSign.name : 'Upload PDF'}
-                      </span>
-                      <input
-                        type="file"
-                        accept=".pdf"
-                        onChange={(e) => {
-                          handleDocumentToSignChange(e);
-                          setShowDocumentError(false);
-                        }}
-                        className="hidden"
-                      />
-                    </label>
-                    {showDocumentError && !documentToSign && (
-                      <p className="text-[10px] text-red-600 mt-1">Required field</p>
-                    )}
-                    {documentToSign && (
-                      <div className="flex items-center justify-between mt-2 text-[10px] text-gray-600">
-                        <span>{(documentToSign.size / 1024).toFixed(1)} KB</span>
-                        <button
-                          type="button"
-                          onClick={handleRemoveDocumentToSign}
-                          className="text-red-600 hover:text-red-800 font-medium"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="bg-white rounded-md p-3">
-                    <label className="block text-xs font-medium text-gray-700 mb-2">
-                      General Documents
-                    </label>
-                    <label className="flex items-center gap-2 px-2 py-2 border border-dashed border-gray-300 rounded cursor-pointer hover:bg-gray-50 transition-colors">
-                      <Upload size={16} className="text-gray-400" />
-                      <span className="text-xs text-gray-600">
-                        {uploadedFiles.length > 0 ? `${uploadedFiles.length} file(s)` : 'Upload files'}
-                      </span>
-                      <input
-                        type="file"
-                        accept="image/*,.pdf"
-                        multiple
-                        onChange={handleFileChange}
-                        className="hidden"
-                      />
-                    </label>
-                    {uploadedFiles.length > 0 && (
-                      <div className="mt-2 space-y-1">
-                        {uploadedFiles.map((file, index) => (
-                          <div key={index} className="flex items-center justify-between text-[10px] text-gray-600">
-                            <span className="truncate flex-1">{file.name}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveFile(index)}
-                              className="text-red-600 hover:text-red-800 font-medium ml-2"
-                            >
-                              Remove
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+              <div className="bg-white rounded-md p-4 mb-4">
+                <label className="block text-sm font-semibold text-gray-900 mb-3">
+                  Required Signature
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="requiresSignature"
+                    checked={requiresSignature}
+                    onChange={(e) => {
+                      setRequiresSignature(e.target.checked);
+                      if (!e.target.checked) {
+                        setSendToQpForSignature(false);
+                        setSendToApproverForSignature(false);
+                      }
+                    }}
+                    className="w-4 h-4 text-[#0072BC] border-gray-300 rounded focus:ring-[#0072BC]"
+                  />
+                  <label htmlFor="requiresSignature" className="text-xs font-medium text-gray-900 cursor-pointer">
+                    Require Signature
+                  </label>
                 </div>
 
-                <div className="bg-white rounded-md p-3">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="requiresSignature"
-                      checked={requiresSignature}
-                      onChange={(e) => {
-                        setRequiresSignature(e.target.checked);
-                        if (!e.target.checked) {
-                          setSendToQpForSignature(false);
-                          setSendToApproverForSignature(false);
-                        }
-                      }}
-                      className="w-3.5 h-3.5 text-[#0072BC] border-gray-300 rounded focus:ring-[#0072BC]"
-                    />
-                    <label htmlFor="requiresSignature" className="text-xs font-medium text-gray-900 cursor-pointer">
-                      Require Signature
-                    </label>
+                {requiresSignature && (
+                  <div className={`mt-3 pl-6 py-2 space-y-2 ${showSignatureError ? 'text-red-700' : ''}`}>
+                    <p className="text-xs font-medium mb-1">
+                      Send to: {showSignatureError && <span className="text-red-600">*</span>}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="sendToQpForSignature"
+                        checked={sendToQpForSignature}
+                        disabled={!sendRequestToQp}
+                        onChange={(e) => {
+                          setSendToQpForSignature(e.target.checked);
+                          setShowSignatureError(false);
+                        }}
+                        className={`w-3.5 h-3.5 text-[#0072BC] border-gray-300 rounded focus:ring-[#0072BC] ${
+                          !sendRequestToQp ? 'opacity-40 cursor-not-allowed' : ''
+                        }`}
+                      />
+                      <label htmlFor="sendToQpForSignature" className={`text-xs cursor-pointer ${
+                        !sendRequestToQp ? 'text-gray-400' : 'text-gray-700'
+                      }`}>
+                        Qualified Person
+                      </label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="sendToApproverForSignature"
+                        checked={sendToApproverForSignature}
+                        onChange={(e) => {
+                          setSendToApproverForSignature(e.target.checked);
+                          setShowSignatureError(false);
+                        }}
+                        className="w-3.5 h-3.5 text-[#0072BC] border-gray-300 rounded focus:ring-[#0072BC]"
+                      />
+                      <label htmlFor="sendToApproverForSignature" className="text-xs text-gray-700 cursor-pointer">
+                        Approver
+                      </label>
+                    </div>
+                    {showSignatureError && (
+                      <p className="text-[10px] text-red-600 mt-1">Select at least one recipient</p>
+                    )}
                   </div>
+                )}
+              </div>
 
-                  {requiresSignature && (
-                    <div className={`mt-2 pl-6 py-2 space-y-1.5 ${showSignatureError ? 'text-red-700' : ''}`}>
-                      <p className="text-[10px] font-medium mb-1">
-                        Send to: {showSignatureError && <span className="text-red-600">*</span>}
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          id="sendToQpForSignature"
-                          checked={sendToQpForSignature}
-                          disabled={!sendRequestToQp}
-                          onChange={(e) => {
-                            setSendToQpForSignature(e.target.checked);
-                            setShowSignatureError(false);
-                          }}
-                          className={`w-3 h-3 text-[#0072BC] border-gray-300 rounded focus:ring-[#0072BC] ${
-                            !sendRequestToQp ? 'opacity-40 cursor-not-allowed' : ''
-                          }`}
-                        />
-                        <label htmlFor="sendToQpForSignature" className={`text-[10px] cursor-pointer ${
-                          !sendRequestToQp ? 'text-gray-400' : 'text-gray-700'
-                        }`}>
-                          Qualified Person
-                        </label>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          id="sendToApproverForSignature"
-                          checked={sendToApproverForSignature}
-                          onChange={(e) => {
-                            setSendToApproverForSignature(e.target.checked);
-                            setShowSignatureError(false);
-                          }}
-                          className="w-3 h-3 text-[#0072BC] border-gray-300 rounded focus:ring-[#0072BC]"
-                        />
-                        <label htmlFor="sendToApproverForSignature" className="text-[10px] text-gray-700 cursor-pointer">
-                          Approver
-                        </label>
-                      </div>
-                      {showSignatureError && (
-                        <p className="text-[10px] text-red-600 mt-1">Select at least one recipient</p>
-                      )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-white rounded-md p-4">
+                  <label className="block text-sm font-semibold text-gray-900 mb-3">
+                    General Documents
+                  </label>
+                  <label className="flex items-center gap-2 px-3 py-2.5 border border-dashed border-gray-300 rounded cursor-pointer hover:bg-gray-50 transition-colors">
+                    <Upload size={16} className="text-gray-400" />
+                    <span className="text-xs text-gray-600">
+                      {uploadedFiles.length > 0 ? `${uploadedFiles.length} file(s)` : 'Upload files'}
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*,.pdf"
+                      multiple
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                  </label>
+                  {uploadedFiles.length > 0 && (
+                    <div className="mt-3 space-y-1.5">
+                      {uploadedFiles.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between text-[10px] text-gray-600">
+                          <span className="truncate flex-1">{file.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveFile(index)}
+                            className="text-red-600 hover:text-red-800 font-medium ml-2"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   )}
+                </div>
+
+                <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+                  <p className="text-xs font-semibold text-blue-900 mb-2">
+                    The following documents are required to be uploaded for permit compliance:
+                  </p>
+                  <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
+                    <li>Pre photos of area that work is being performed</li>
+                    <li>Photos of identification signs at entrance</li>
+                    <li>Photos of work in progress: Trench depth per requirements</li>
+                    <li>Photos of work in progress: Conduit routes</li>
+                    <li>Photos of work in progress: All terminations</li>
+                    <li>Photos of work area upon completion</li>
+                    <li>Photo of permit</li>
+                    <li>Photo of passed inspection (if applicable)</li>
+                    <li>Photo of closed permit</li>
+                  </ul>
                 </div>
               </div>
             </div>
