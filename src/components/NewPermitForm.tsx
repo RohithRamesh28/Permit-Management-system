@@ -367,11 +367,11 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
             .from('permit-pdfs')
             .upload(filePath, file, {
               cacheControl: '3600',
-              upsert: false,
+              upsert: true,
             });
 
           if (uploadError) {
-            console.error('Error uploading file:', uploadError);
+            console.error('Error uploading general document:', file.name, uploadError);
             continue;
           }
 
@@ -396,22 +396,25 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
           .from('permit-pdfs')
           .upload(filePath, documentToSign, {
             cacheControl: '3600',
-            upsert: false,
+            upsert: true,
           });
 
-        if (!uploadError) {
-          const { data: urlData } = supabase.storage
-            .from('permit-pdfs')
-            .getPublicUrl(filePath);
-
-          fileUrls.push({
-            name: documentToSign.name,
-            url: urlData.publicUrl,
-            size: documentToSign.size,
-            type: documentToSign.type,
-            documentType: 'to_sign',
-          });
+        if (uploadError) {
+          console.error('Error uploading permit application document:', documentToSign.name, uploadError);
+          throw new Error('Failed to upload permit application document');
         }
+
+        const { data: urlData } = supabase.storage
+          .from('permit-pdfs')
+          .getPublicUrl(filePath);
+
+        fileUrls.push({
+          name: documentToSign.name,
+          url: urlData.publicUrl,
+          size: documentToSign.size,
+          type: documentToSign.type,
+          documentType: 'to_sign',
+        });
       }
 
       if (fileUrls.length > 0) {
