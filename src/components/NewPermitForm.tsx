@@ -24,7 +24,8 @@ interface FormData {
   date_of_project_commencement: string;
   estimated_date_of_completion: string;
   utility_provider: string;
-  property_owner: string;
+  land_owner: string;
+  tower_owner: string;
   end_customer: string;
   project_value: string;
   actual_date_of_completion: string;
@@ -50,7 +51,8 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
     date_of_project_commencement: '',
     estimated_date_of_completion: '',
     utility_provider: '',
-    property_owner: '',
+    land_owner: '',
+    tower_owner: '',
     end_customer: '',
     project_value: '',
     actual_date_of_completion: '',
@@ -324,7 +326,8 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
             utility_provider: permitType === 'Electrical' ? formData.utility_provider : null,
             state: selectedState,
             permit_jurisdiction: permitJurisdiction,
-            property_owner: formData.property_owner,
+            land_owner: formData.land_owner || null,
+            tower_owner: formData.tower_owner,
             end_customer: formData.end_customer,
             project_value: parseFloat(formData.project_value) || 0,
             actual_date_of_completion: formData.actual_date_of_completion || null,
@@ -446,7 +449,8 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
         utility_provider: formData.utility_provider || '',
         state: selectedState,
         permit_jurisdiction: permitJurisdiction,
-        property_owner: formData.property_owner,
+        land_owner: formData.land_owner || '',
+        tower_owner: formData.tower_owner,
         end_customer: formData.end_customer,
         project_value: parseInt(formData.project_value) || 0,
         actual_date_of_completion: formData.actual_date_of_completion || '',
@@ -855,18 +859,32 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Property Owner <span className="text-red-500">*</span>
+                      Land Owner (if applicable)
                     </label>
                     <input
                       type="text"
-                      name="property_owner"
-                      value={formData.property_owner}
+                      name="land_owner"
+                      value={formData.land_owner}
+                      onChange={handleInputChange}
+                      placeholder="e.g., SBA, CCI, ATC"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Tower Owner <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="tower_owner"
+                      value={formData.tower_owner}
                       onChange={handleInputChange}
                       required
-                      placeholder="e.g., SBA, CCI, ATC"
+                      placeholder="e.g., American Tower"
                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
                     />
                   </div>

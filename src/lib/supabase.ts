@@ -25,7 +25,8 @@ export interface Permit {
   state: string;
   county_or_parish: string;
   city: string;
-  property_owner: string;
+  land_owner?: string;
+  tower_owner: string;
   end_customer: string;
   project_value: number;
   actual_date_of_completion?: string;

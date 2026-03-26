@@ -62,7 +62,8 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         utility_provider: permit.utility_provider || '',
         state: permit.state || '',
         permit_jurisdiction: permit.permit_jurisdiction || '',
-        property_owner: permit.property_owner || '',
+        land_owner: permit.land_owner || '',
+        tower_owner: permit.tower_owner || '',
         end_customer: permit.end_customer || '',
         project_value: permit.project_value?.toString() || '',
         actual_date_of_completion: permit.actual_date_of_completion || '',
@@ -206,7 +207,8 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         state: permit.state || '',
         county_or_parish: permit.county_or_parish || '',
         city: permit.city || '',
-        property_owner: permit.property_owner || '',
+        land_owner: permit.land_owner || '',
+        tower_owner: permit.tower_owner || '',
         end_customer: permit.end_customer || '',
         project_value: permit.project_value?.toString() || '0',
         actual_date_of_completion: permit.actual_date_of_completion || '',
@@ -270,7 +272,8 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         utility_provider: permit.utility_provider || '',
         state: permit.state,
         permit_jurisdiction: permit.permit_jurisdiction || permit.state,
-        property_owner: permit.property_owner,
+        land_owner: permit.land_owner,
+        tower_owner: permit.tower_owner,
         end_customer: permit.end_customer,
         project_value: permit.project_value,
         detailed_sow: permit.detailed_sow,
@@ -357,7 +360,8 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         utility_provider: permit.utility_provider || '',
         state: permit.state,
         permit_jurisdiction: permit.permit_jurisdiction || permit.state,
-        property_owner: permit.property_owner,
+        land_owner: permit.land_owner,
+        tower_owner: permit.tower_owner,
         end_customer: permit.end_customer,
         project_value: permit.project_value,
         detailed_sow: permit.detailed_sow,
@@ -443,7 +447,8 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         utility_provider: editFormData.type_of_permit === 'Electrical Permit' ? editFormData.utility_provider : null,
         state: editFormData.state,
         permit_jurisdiction: editFormData.permit_jurisdiction || editFormData.state,
-        property_owner: editFormData.property_owner,
+        land_owner: editFormData.land_owner || null,
+        tower_owner: editFormData.tower_owner,
         end_customer: editFormData.end_customer,
         project_value: parseFloat(editFormData.project_value) || 0,
         actual_date_of_completion: editFormData.actual_date_of_completion || null,
@@ -485,7 +490,8 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         utility_provider: editFormData.utility_provider || '',
         state: editFormData.state,
         permit_jurisdiction: editFormData.permit_jurisdiction || editFormData.state,
-        property_owner: editFormData.property_owner,
+        land_owner: editFormData.land_owner || '',
+        tower_owner: editFormData.tower_owner,
         end_customer: editFormData.end_customer,
         project_value: parseFloat(editFormData.project_value) || 0,
         detailed_sow: editFormData.detailed_sow,
@@ -871,10 +877,14 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                             <p className="text-gray-900 font-medium">{permit.permit_jurisdiction || permit.state}</p>
                           </div>
                         </div>
-                        <div className="grid grid-cols-3 gap-4">
+                        <div className="grid grid-cols-4 gap-4">
                           <div>
-                            <p className="text-sm text-gray-500">Property Owner</p>
-                            <p className="text-gray-900 font-medium">{permit.property_owner}</p>
+                            <p className="text-sm text-gray-500">Land Owner (if applicable)</p>
+                            <p className="text-gray-900 font-medium">{permit.land_owner || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-500">Tower Owner</p>
+                            <p className="text-gray-900 font-medium">{permit.tower_owner}</p>
                           </div>
                           <div>
                             <p className="text-sm text-gray-500">End Customer</p>
@@ -1125,18 +1135,32 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                           )}
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Property Owner <span className="text-red-500">*</span>
+                              Land Owner (if applicable)
                             </label>
                             <input
                               type="text"
-                              name="property_owner"
-                              value={editFormData?.property_owner || ''}
+                              name="land_owner"
+                              value={editFormData?.land_owner || ''}
+                              onChange={handleEditInputChange}
+                              placeholder="e.g., SBA, CCI, ATC"
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Tower Owner <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              name="tower_owner"
+                              value={editFormData?.tower_owner || ''}
                               onChange={handleEditInputChange}
                               required
-                              placeholder="e.g., SBA, CCI, ATC"
+                              placeholder="e.g., American Tower"
                               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
                             />
                           </div>

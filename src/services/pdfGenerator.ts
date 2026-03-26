@@ -16,7 +16,8 @@ export interface PermitFormData {
   permit_jurisdiction?: string;
   county_or_parish?: string;
   city?: string;
-  property_owner: string;
+  land_owner?: string;
+  tower_owner?: string;
   end_customer: string;
   project_value: string;
   actual_date_of_completion?: string;
@@ -204,10 +205,13 @@ export const generatePermitPDF = (formData: PermitFormData): Blob => {
     yPos = tempY + 2;
   }
 
-  tempY = addField('Property Owner', formData.property_owner, margin, yPos, col1Width);
-  tempY2 = addField('End Customer', formData.end_customer, col2X, yPos, col1Width);
-  tempY3 = addField('Project Value', `$${formData.project_value}`, col3X, yPos, col1Width);
-  yPos = Math.max(tempY, tempY2, tempY3) + 2;
+  tempY = addField('Land Owner (if applicable)', formData.land_owner || 'N/A', margin, yPos, col1Width);
+  tempY2 = addField('Tower Owner', formData.tower_owner || '', col2X, yPos, col1Width);
+  yPos = Math.max(tempY, tempY2) + 2;
+
+  tempY = addField('End Customer', formData.end_customer, margin, yPos, col1Width);
+  tempY2 = addField('Project Value', `$${formData.project_value}`, col2X, yPos, col1Width);
+  yPos = Math.max(tempY, tempY2) + 2;
 
   if (formData.actual_date_of_completion) {
     yPos = addField('Actual Date of Completion', formData.actual_date_of_completion, margin, yPos, col1Width);
