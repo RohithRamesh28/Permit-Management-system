@@ -35,6 +35,33 @@ async function getAppOnlyToken(
   return data.access_token;
 }
 
+async function getSiteUserById(
+  accessToken: string,
+  siteId: string,
+  userId: string
+): Promise<{ displayName: string; email: string } | null> {
+  try {
+    const response = await fetch(
+      `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/User Information List/items/${userId}?expand=fields`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const user = await response.json();
+    const fields = user.fields || {};
+
+    return {
+      displayName: fields.Title || fields.Name || "",
+      email: fields.EMail || fields.UserName || "",
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function fetchAllUserManagementItems(
   accessToken: string,
   siteUrl: string,
@@ -71,7 +98,7 @@ async function fetchAllUserManagementItems(
   const listId = listData.id;
 
   let allItems: any[] = [];
-  let nextLink = `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${listId}/items?expand=fields($select=*)`;
+  let nextLink = `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${listId}/items?expand=fields`;
 
   while (nextLink) {
     const itemsResponse = await fetch(nextLink, {
@@ -84,7 +111,34 @@ async function fetchAllUserManagementItems(
     }
 
     const itemsData = await itemsResponse.json();
-    allItems = allItems.concat(itemsData.value || []);
+
+    for (const item of itemsData.value || []) {
+      const fields = item.fields || {};
+
+      if (fields.BusinessEmail0LookupId) {
+        const userDetails = await getSiteUserById(accessToken, siteId, fields.BusinessEmail0LookupId);
+        if (userDetails) {
+          fields._BusinessEmail0_Expanded = userDetails;
+        }
+      }
+
+      if (fields.ManageremailLookupId) {
+        const userDetails = await getSiteUserById(accessToken, siteId, fields.ManageremailLookupId);
+        if (userDetails) {
+          fields._Manageremail_Expanded = userDetails;
+        }
+      }
+
+      if (fields.DivisionManager_x002f_EscalationLookupId) {
+        const userDetails = await getSiteUserById(accessToken, siteId, fields.DivisionManager_x002f_EscalationLookupId);
+        if (userDetails) {
+          fields._DivisionManager_Expanded = userDetails;
+        }
+      }
+
+      allItems.push(item);
+    }
+
     nextLink = itemsData["@odata.nextLink"] || null;
   }
 
@@ -110,51 +164,30 @@ Deno.serve(async (req: Request) => {
     const accessToken = await getAppOnlyToken(tenantId, clientId, clientSecret);
     const items = await fetchAllUserManagementItems(accessToken, siteUrl, listName);
 
-    if (items.length > 0) {
-      const sampleFields = items[0].fields;
-      const relevantFields = {
-        BusinessEmail0: sampleFields.BusinessEmail0,
-        BusinessEmail0LookupId: sampleFields.BusinessEmail0LookupId,
-        Manageremail: sampleFields.Manageremail,
-        ManageremailLookupId: sampleFields.ManageremailLookupId,
-        DivisionManager_x002f_Escalation: sampleFields.DivisionManager_x002f_Escalation,
-      };
-      console.log("DEBUG - Sample item people picker fields:", JSON.stringify(relevantFields, null, 2));
-    }
+    console.log(`Fetched ${items.length} items from SharePoint`);
 
     const usersToInsert = items.map((item) => {
       const fields = item.fields || {};
 
+      const businessEmailData = fields._BusinessEmail0_Expanded;
+      const managerEmailData = fields._Manageremail_Expanded;
+      const divisionManagerData = fields._DivisionManager_Expanded;
+
       return {
         id: fields.ID || fields.id,
-        title: fields.Title || null,
-        employee_first_name: fields.EmployeeFirstName || null,
-        employee_last_name: fields.EmployeeLastName || null,
-        business_email: fields.BusinessEmail || null,
-        manager_display_name: fields.ManagerDisplayName || null,
-        manager_electronic_address: fields.ManagerElectronicAddress || null,
         location_description: fields.LocationDescription || null,
         job_assignment_name: fields.JobAssignmentName || null,
-        division_manager_escalation: typeof fields.DivisionManager_x002f_Escalation === 'string'
-          ? fields.DivisionManager_x002f_Escalation
-          : fields.DivisionManager_x002f_Escalation?.LookupValue || null,
-        employee_display_name: typeof fields.BusinessEmail0 === 'string'
-          ? fields.BusinessEmail0
-          : fields.BusinessEmail0?.LookupValue || null,
-        business_email_lookup: typeof fields.BusinessEmail0 === 'object' && fields.BusinessEmail0?.Email
-          ? fields.BusinessEmail0.Email
-          : fields.BusinessEmail0LookupId || null,
-        manager_email_lookup: typeof fields.Manageremail === 'string'
-          ? fields.Manageremail
-          : fields.Manageremail?.LookupValue || fields.Manageremail?.Email || null,
-        division_manager_email_lookup: typeof fields.DivisionManager_x002f_Escalation === 'object' && fields.DivisionManager_x002f_Escalation?.Email
-          ? fields.DivisionManager_x002f_Escalation.Email
-          : null,
+        employee_display_name: businessEmailData?.displayName || null,
+        business_email_lookup: businessEmailData?.email || null,
+        manager_email_lookup: managerEmailData?.email || null,
+        division_manager_email_lookup: divisionManagerData?.email || null,
         created: fields.Created || null,
         modified: fields.Modified || null,
         synced_at: new Date().toISOString(),
       };
     });
+
+    console.log("Sample user to insert:", JSON.stringify(usersToInsert[0], null, 2));
 
     const { error: deleteError } = await supabase
       .from("user_management")

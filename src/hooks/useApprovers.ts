@@ -21,30 +21,22 @@ export function useApprovers() {
       try {
         const { data, error: queryError } = await supabase
           .from('user_management')
-          .select('id, title, job_assignment_name, location_description, employee_display_name, business_email_lookup, manager_email_lookup, division_manager_email_lookup')
-          .order('job_assignment_name', { ascending: true });
+          .select('employee_display_name, business_email_lookup, manager_email_lookup, division_manager_email_lookup')
+          .not('employee_display_name', 'is', null)
+          .not('business_email_lookup', 'is', null)
+          .order('employee_display_name', { ascending: true });
 
         if (queryError) {
           throw queryError;
         }
 
         if (data) {
-          const approversList: ApproverInfo[] = data
-            .filter((row) => row.job_assignment_name && row.location_description)
-            .map((row) => {
-              const displayName = row.employee_display_name ||
-                `${row.job_assignment_name} - ${row.location_description}`;
-
-              const email = row.business_email_lookup ||
-                `${row.job_assignment_name?.toLowerCase().replace(/\s+/g, '.')}@ontivity.com`;
-
-              return {
-                fullName: displayName,
-                businessEmail: email,
-                managerEmail: row.manager_email_lookup || null,
-                divisionManagerEmail: row.division_manager_email_lookup || null,
-              };
-            });
+          const approversList: ApproverInfo[] = data.map((row) => ({
+            fullName: row.employee_display_name,
+            businessEmail: row.business_email_lookup,
+            managerEmail: row.manager_email_lookup || null,
+            divisionManagerEmail: row.division_manager_email_lookup || null,
+          }));
 
           setApprovers(approversList);
         }
