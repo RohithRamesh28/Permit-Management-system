@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -392,23 +393,21 @@ Deno.serve(async (req: Request) => {
       console.warn(`Warning: Only ${allRows.length} licensing records fetched, expected at least ${MIN_EXPECTED_RECORDS}`);
     }
 
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
     const batchSize = 500;
     for (let i = 0; i < allRows.length; i += batchSize) {
       const batch = allRows.slice(i, i + batchSize);
-      const upsertResponse = await fetch(`${supabaseUrl}/rest/v1/licensing_cache`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${supabaseServiceKey}`,
-          "apikey": supabaseServiceKey,
-          "Prefer": "resolution=merge-duplicates",
-        },
-        body: JSON.stringify(batch),
-      });
 
-      if (!upsertResponse.ok) {
-        const errorText = await upsertResponse.text();
-        throw new Error(`Failed to upsert batch: ${errorText}`);
+      const { error: upsertError } = await supabase
+        .from("licensing_cache")
+        .upsert(batch, {
+          onConflict: "source_list,sp_item_id",
+          ignoreDuplicates: false
+        });
+
+      if (upsertError) {
+        throw new Error(`Failed to upsert batch: ${upsertError.message}`);
       }
     }
 
