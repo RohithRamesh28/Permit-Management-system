@@ -43,7 +43,7 @@ export function getPermitPermissions(
   const isApprover = normalizedApproverEmail === normalizedUserEmail;
   const isRequestor = normalizedRequestorEmail === normalizedUserEmail;
 
-  switch (permit.status) {
+  switch (permit.current_stage) {
     case 'awaiting_qp':
       if (isQp) {
         return {
@@ -136,7 +136,7 @@ export function getPermitPermissions(
 export function getCurrentReviewer(permit: Permit | null): { name: string; email: string; role: string } | null {
   if (!permit) return null;
 
-  switch (permit.status) {
+  switch (permit.current_stage) {
     case 'awaiting_qp':
       return {
         name: permit.qp_name || 'Unknown',

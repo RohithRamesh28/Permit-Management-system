@@ -337,8 +337,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
       const { error: updateError } = await supabase
         .from('permits')
         .update({
-          current_stage: 'rejected',
-          status: 'Rejected',
+          current_stage: 'rejected_by_qp',
           qp_rejected_at: new Date().toISOString(),
           qp_rejected_by: qpName,
           qp_rejection_notes: qpRejectionNotes,
@@ -407,8 +406,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
       const finalPdfUrl = signedPdfUrl || permit.signed_document_url || '';
 
       const updateData: any = {
-        current_stage: 'active',
-        status: 'Active',
+        current_stage: 'approved',
         approver_approved_at: new Date().toISOString(),
         approved_by: approverName,
         approver_rejection_notes: null,
@@ -555,8 +553,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
       const { error: updateError } = await supabase
         .from('permits')
         .update({
-          current_stage: 'rejected',
-          status: 'Rejected',
+          current_stage: 'rejected_by_approver',
           approver_rejected_at: new Date().toISOString(),
           approver_rejection_notes: approverRejectionNotes,
           rejection_notes: `Rejected by Approver: ${approverRejectionNotes}`,
@@ -632,7 +629,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
 
     try {
       const updateData: any = {
-        status: 'Active',
+        current_stage: 'approved',
         rejection_notes: null
       };
       let pdfUrl = null;
@@ -776,7 +773,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
 
     try {
       const updateData: any = {
-        status: 'Rejected',
+        current_stage: 'rejected_by_qp',
         rejection_notes: rejectionNotes
       };
 
@@ -894,7 +891,6 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
       const newResubmissionCount = (permit.resubmission_count || 0) + 1;
 
       const updateData: any = {
-        status: 'Pending Approval',
         current_stage: newStage,
         resubmission_count: newResubmissionCount,
         permit_jurisdiction_type: editFormData.permit_jurisdiction_type,
@@ -1117,10 +1113,10 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
       detailed_sow: permit.detailed_sow || '',
       requiresSignature: permit.requires_signature || false,
       signatureDataUrl: permit.signature_image_url,
-      status: permit.status,
+      status: permit.current_stage,
       signerName: permit.signed_by || undefined,
-      approvedBy: permit.status === 'Active' ? (permit.approved_by || permit.signed_by || 'System Admin') : undefined,
-      approvedAt: permit.status === 'Active' && permit.signed_at ? formatDate(permit.signed_at) : undefined,
+      approvedBy: permit.current_stage === 'approved' ? (permit.approved_by || permit.signed_by || 'System Admin') : undefined,
+      approvedAt: permit.current_stage === 'approved' && permit.signed_at ? formatDate(permit.signed_at) : undefined,
     });
 
     const mergedPdfBlob = await mergePDFs(pdfBlob, permit.signed_document_url);
@@ -1139,7 +1135,6 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
       const { error: updateError } = await supabase
         .from('permits')
         .update({
-          status: 'Closed',
           current_stage: 'closed',
           closed_at: new Date().toISOString(),
           closed_by: closedByName,
@@ -1223,16 +1218,41 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
 
   const getStatusBadgeClass = (status: string) => {
     switch (status) {
-      case 'Pending Approval':
+      case 'awaiting_qp':
+      case 'awaiting_approver':
         return 'bg-yellow-100 text-yellow-800';
-      case 'Active':
+      case 'approved':
         return 'bg-green-100 text-green-800';
-      case 'Rejected':
+      case 'rejected_by_qp':
+      case 'rejected_by_approver':
         return 'bg-red-100 text-red-800';
-      case 'Closed':
+      case 'closed':
         return 'bg-gray-100 text-gray-800';
+      case 'draft':
+        return 'bg-blue-100 text-blue-800';
       default:
         return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getStatusDisplay = (stage: string) => {
+    switch (stage) {
+      case 'awaiting_qp':
+        return 'Awaiting QP';
+      case 'awaiting_approver':
+        return 'Awaiting Approver';
+      case 'rejected_by_qp':
+        return 'Rejected by QP';
+      case 'rejected_by_approver':
+        return 'Rejected by Approver';
+      case 'approved':
+        return 'Approved';
+      case 'closed':
+        return 'Closed';
+      case 'draft':
+        return 'Draft';
+      default:
+        return stage;
     }
   };
 
@@ -1325,10 +1345,10 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
               )}
             </div>
             <div className="flex items-center gap-3">
-              <span className={`px-4 py-2 rounded-full text-sm font-medium ${getStatusBadgeClass(permit.status)}`}>
-                {permit.status}
+              <span className={`px-4 py-2 rounded-full text-sm font-medium ${getStatusBadgeClass(permit.current_stage)}`}>
+                {getStatusDisplay(permit.current_stage)}
               </span>
-              {!readOnlyMode && permissions.canEdit && ((permit.status === 'Rejected' && !isEditMode) || (permit.status === 'Pending Approval' && permit.rejection_notes && !isEditMode)) && (
+              {!readOnlyMode && permissions.canEdit && (((permit.current_stage === 'rejected_by_qp' || permit.current_stage === 'rejected_by_approver') && !isEditMode) || ((permit.current_stage === 'awaiting_qp' || permit.current_stage === 'awaiting_approver') && permit.rejection_notes && !isEditMode)) && (
                 <button
                   onClick={() => {
                     if (!permissions.canEdit) {
@@ -1852,7 +1872,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
               </div>
 
               <div className="space-y-6">
-                {permit.current_stage && permit.status === 'Pending Approval' && (
+                {permit.current_stage && (permit.current_stage === 'awaiting_qp' || permit.current_stage === 'awaiting_approver') && (
                   <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
                     <div className="flex items-center gap-2 mb-2">
                       <User size={18} className="text-blue-600" />
@@ -1900,7 +1920,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                     )}
 
                     <div className="space-y-3">
-                      {permit.current_stage === 'awaiting_qp' && permit.status === 'Pending Approval' && !isEditMode && (
+                      {permit.current_stage === 'awaiting_qp' && !isEditMode && (
                         <>
                           {!permissions.canQpApprove && (
                             <div className="p-4 bg-gray-100 border border-gray-300 rounded-lg text-center">
@@ -1940,7 +1960,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                         </>
                       )}
 
-                      {permit.current_stage === 'awaiting_approver' && permit.status === 'Pending Approval' && !isEditMode && (
+                      {permit.current_stage === 'awaiting_approver' && !isEditMode && (
                         <>
                           {permit.qp_approved_by && (
                             <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded-lg">
@@ -1988,7 +2008,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                         </>
                       )}
 
-                      {permit.status === 'Rejected' && isEditMode && (
+                      {(permit.current_stage === 'rejected_by_qp' || permit.current_stage === 'rejected_by_approver') && isEditMode && (
                         <>
                           <button
                             onClick={handleResubmitClick}
@@ -2007,7 +2027,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                       )}
                     </div>
 
-                    {(permit.status === 'Active' || permit.current_stage === 'active') && (
+                    {permit.current_stage === 'approved' && (
                       <div className="mt-4 pt-4 border-t border-gray-300 space-y-3">
                         <button
                           onClick={() => setShowUploadModal(true)}

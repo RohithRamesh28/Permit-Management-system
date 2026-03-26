@@ -265,7 +265,7 @@ export default function PermitForm({ mode, permitId, onNavigate }: PermitFormPro
         end_customer: '',
         project_value: 0,
         detailed_sow: formData.workDescription,
-        status: 'Pending Approval',
+        current_stage: 'awaiting_qp',
         requires_signature: formData.requiresSignature,
         approver_name: selectedApprover?.fullName || null,
         approver_email: selectedApprover?.businessEmail || null,
@@ -342,7 +342,7 @@ export default function PermitForm({ mode, permitId, onNavigate }: PermitFormPro
 
     setSubmitting(true);
     try {
-      const updateData: any = { status: 'Approved' };
+      const updateData: any = { current_stage: 'approved' };
 
       if (signatureDataUrl) {
         updateData.signature_data_url = signatureDataUrl;
@@ -426,7 +426,7 @@ export default function PermitForm({ mode, permitId, onNavigate }: PermitFormPro
     try {
       const { error } = await supabase
         .from('permits')
-        .update({ status: 'Rejected' })
+        .update({ current_stage: 'rejected_by_qp' })
         .eq('id', permitId);
 
       if (error) throw error;

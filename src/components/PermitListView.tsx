@@ -60,7 +60,15 @@ export default function PermitListView({ onNavigate, onSelectPermit }: PermitLis
     }
 
     if (statusFilter !== 'All') {
-      filtered = filtered.filter((permit) => permit.status === statusFilter);
+      filtered = filtered.filter((permit) => {
+        if (statusFilter === 'Awaiting QP') return permit.current_stage === 'awaiting_qp';
+        if (statusFilter === 'Awaiting Approver') return permit.current_stage === 'awaiting_approver';
+        if (statusFilter === 'Approved') return permit.current_stage === 'approved';
+        if (statusFilter === 'Rejected') return permit.current_stage === 'rejected_by_qp' || permit.current_stage === 'rejected_by_approver';
+        if (statusFilter === 'Closed') return permit.current_stage === 'closed';
+        if (statusFilter === 'Draft') return permit.current_stage === 'draft';
+        return true;
+      });
     }
 
     if (entityFilter !== 'All') {
@@ -74,39 +82,45 @@ export default function PermitListView({ onNavigate, onSelectPermit }: PermitLis
     setFilteredPermits(filtered);
   };
 
-  const getStatusBadgeClass = (status: string, currentStage?: string) => {
-    if (status === 'Pending Approval' && currentStage) {
-      if (currentStage === 'awaiting_qp') {
+  const getStatusBadgeClass = (currentStage: string) => {
+    switch (currentStage) {
+      case 'awaiting_qp':
         return 'bg-amber-100 text-amber-800';
-      }
-      if (currentStage === 'awaiting_approver') {
+      case 'awaiting_approver':
         return 'bg-blue-100 text-blue-800';
-      }
-    }
-    switch (status) {
-      case 'Pending Approval':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'Active':
+      case 'approved':
         return 'bg-green-100 text-green-800';
-      case 'Rejected':
+      case 'rejected_by_qp':
+      case 'rejected_by_approver':
         return 'bg-red-100 text-red-800';
-      case 'Closed':
+      case 'closed':
         return 'bg-gray-100 text-gray-800';
+      case 'draft':
+        return 'bg-blue-100 text-blue-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getStatusDisplay = (permit: Permit) => {
-    if (permit.status === 'Pending Approval' && permit.current_stage) {
-      if (permit.current_stage === 'awaiting_qp') {
+    switch (permit.current_stage) {
+      case 'awaiting_qp':
         return `Awaiting QP (${permit.qp_name || 'QP'})`;
-      }
-      if (permit.current_stage === 'awaiting_approver') {
+      case 'awaiting_approver':
         return `Awaiting Approver (${permit.approver_name || 'Approver'})`;
-      }
+      case 'approved':
+        return 'Approved';
+      case 'rejected_by_qp':
+        return 'Rejected by QP';
+      case 'rejected_by_approver':
+        return 'Rejected by Approver';
+      case 'closed':
+        return 'Closed';
+      case 'draft':
+        return 'Draft';
+      default:
+        return permit.current_stage;
     }
-    return permit.status;
   };
 
   const formatDate = (dateString: string) => {
@@ -248,7 +262,7 @@ export default function PermitListView({ onNavigate, onSelectPermit }: PermitLis
                       <td className="px-6 py-4 text-sm text-gray-700">{permit.state}</td>
                       <td className="px-6 py-4 text-sm text-gray-700">{permit.city}</td>
                       <td className="px-6 py-4">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(permit.status, permit.current_stage)}`}>
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(permit.current_stage)}`}>
                           {getStatusDisplay(permit)}
                         </span>
                       </td>

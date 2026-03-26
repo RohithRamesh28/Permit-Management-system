@@ -9,7 +9,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-export type ApprovalStage = 'awaiting_qp' | 'awaiting_approver' | 'active' | 'rejected' | 'closed';
+export type ApprovalStage = 'draft' | 'awaiting_qp' | 'awaiting_approver' | 'rejected_by_qp' | 'rejected_by_approver' | 'approved' | 'closed';
 
 export interface Permit {
   id: string;
@@ -33,7 +33,7 @@ export interface Permit {
   project_value: number;
   actual_date_of_completion?: string;
   detailed_sow: string;
-  status: 'Pending Approval' | 'Active' | 'Rejected' | 'Closed';
+  current_stage: ApprovalStage;
   rejection_notes?: string;
   requires_signature: boolean;
   signature_image_url?: string;
@@ -56,7 +56,8 @@ export interface Permit {
   approver_division_manager_email?: string;
   send_to_qp_for_signature?: boolean;
   send_to_approver_for_signature?: boolean;
-  current_stage?: ApprovalStage;
+  requestor_name?: string;
+  requestor_email?: string;
   send_to_qp?: boolean;
   is_qp_signature_required?: boolean;
   is_approver_signature_required?: boolean;
