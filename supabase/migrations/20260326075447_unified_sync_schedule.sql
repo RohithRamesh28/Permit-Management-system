@@ -13,7 +13,7 @@
 
   3. Error Handling
     - All functions now include validation checks
-    - Failures trigger email notifications to Rohith@katproteh.com
+    - Failures trigger email notifications to Rohith@katprotech.com
     - Old data is preserved if sync fails (no deletion on error)
 
   4. Validation Features
