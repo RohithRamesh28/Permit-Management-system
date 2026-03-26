@@ -63,7 +63,7 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
   const lastPointRef = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
   }, []);
 
   useEffect(() => {
