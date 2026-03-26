@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { X, CheckCircle, ZoomIn, ZoomOut, Type, PenTool, RotateCcw, Copy, Plus, Trash2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { PDFDocument } from 'pdf-lib';
 
 interface SignatureItem {
   id: string;
@@ -14,7 +15,7 @@ interface PdfSigningModalProps {
   pdfUrl: string;
   pdfName: string;
   onClose: () => void;
-  onApprove: (signatures: Array<{ signatureData: string; signerName: string; position: { x: number; y: number }; size: { width: number; height: number } }>) => void;
+  onApprove: (signatures: Array<{ signatureData: string; signerName: string; position: { x: number; y: number }; size: { width: number; height: number }; pdfDimensions: { width: number; height: number } }>) => void;
   signerName?: string;
 }
 
@@ -50,12 +51,38 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
   const [selectedCreatedSignature, setSelectedCreatedSignature] = useState<number | null>(null);
   const [pendingSignatureDataUrl, setPendingSignatureDataUrl] = useState<string>('');
   const [pendingSignerName, setPendingSignerName] = useState<string>('');
+  const [pdfDimensions, setPdfDimensions] = useState<{ width: number; height: number } | null>(null);
+  const [previewDimensions, setPreviewDimensions] = useState<{ width: number; height: number }>({ width: 850, height: 1100 });
 
   const pdfContainerRef = useRef<HTMLDivElement>(null);
   const pdfWrapperRef = useRef<HTMLDivElement>(null);
   const drawCanvasRef = useRef<HTMLCanvasElement>(null);
   const isDrawingRef = useRef(false);
   const lastPointRef = useRef<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    const loadPdfDimensions = async () => {
+      try {
+        const response = await fetch(pdfUrl);
+        const pdfBytes = await response.arrayBuffer();
+        const pdfDoc = await PDFDocument.load(pdfBytes);
+        const pages = pdfDoc.getPages();
+        const firstPage = pages[0];
+        const { width, height } = firstPage.getSize();
+        setPdfDimensions({ width, height });
+
+        const aspectRatio = width / height;
+        const previewHeight = 1100;
+        const previewWidth = previewHeight * aspectRatio;
+        setPreviewDimensions({ width: previewWidth, height: previewHeight });
+      } catch (error) {
+        console.error('Error loading PDF dimensions:', error);
+        setPdfDimensions({ width: 612, height: 792 });
+      }
+    };
+
+    loadPdfDimensions();
+  }, [pdfUrl]);
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -270,11 +297,17 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
       return;
     }
 
+    if (!pdfDimensions) {
+      alert('PDF dimensions are still loading. Please wait a moment.');
+      return;
+    }
+
     const signatureData = signatures.map(sig => ({
       signatureData: sig.dataUrl,
       signerName: sig.signerName,
       position: sig.position,
       size: sig.size,
+      pdfDimensions: pdfDimensions,
     }));
 
     onApprove(signatureData);
@@ -486,13 +519,13 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
             <div
               ref={pdfWrapperRef}
               className="relative bg-white rounded shadow-lg"
-              style={{ width: '850px', minHeight: '1100px' }}
+              style={{ width: `${previewDimensions.width}px`, minHeight: `${previewDimensions.height}px` }}
             >
               <iframe
                 src={pdfUrl}
                 title={pdfName}
                 className="w-full border-0 rounded"
-                style={{ height: '1100px', pointerEvents: 'none' }}
+                style={{ height: `${previewDimensions.height}px`, pointerEvents: 'none' }}
               />
 
               {cursorPosition && pendingSignatureDataUrl && (

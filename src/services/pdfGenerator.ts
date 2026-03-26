@@ -379,10 +379,8 @@ export interface SignatureData {
   signerName: string;
   position: { x: number; y: number };
   size: { width: number; height: number };
+  pdfDimensions: { width: number; height: number };
 }
-
-export const PDF_PREVIEW_WIDTH = 850;
-export const PDF_PREVIEW_HEIGHT = 1100;
 
 export const embedMultipleSignaturesInPDF = async (
   pdfUrl: string,
@@ -396,17 +394,19 @@ export const embedMultipleSignaturesInPDF = async (
   const firstPage = pages[0];
   const { width: pageWidth, height: pageHeight } = firstPage.getSize();
 
-  const scaleX = pageWidth / PDF_PREVIEW_WIDTH;
-  const scaleY = pageHeight / PDF_PREVIEW_HEIGHT;
-
   for (const sig of signatures) {
     const signatureImageBytes = await fetch(sig.signatureData).then(res => res.arrayBuffer());
     const signatureImage = await pdfDoc.embedPng(signatureImageBytes);
 
-    const pdfX = sig.position.x * scaleX;
-    const pdfY = sig.position.y * scaleY;
-    const pdfWidth = sig.size.width * scaleX;
-    const pdfHeight = sig.size.height * scaleY;
+    const percentX = (sig.position.x / sig.pdfDimensions.width) * 100;
+    const percentY = (sig.position.y / sig.pdfDimensions.height) * 100;
+    const percentWidth = (sig.size.width / sig.pdfDimensions.width) * 100;
+    const percentHeight = (sig.size.height / sig.pdfDimensions.height) * 100;
+
+    const pdfX = (percentX / 100) * pageWidth;
+    const pdfY = (percentY / 100) * pageHeight;
+    const pdfWidth = (percentWidth / 100) * pageWidth;
+    const pdfHeight = (percentHeight / 100) * pageHeight;
 
     firstPage.drawImage(signatureImage, {
       x: pdfX,
