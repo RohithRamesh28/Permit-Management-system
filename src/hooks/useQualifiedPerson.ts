@@ -27,8 +27,8 @@ export function useQualifiedPerson(userEmail: string | null) {
       try {
         const { data, error: queryError } = await supabase
           .from('user_management')
-          .select('manager_display_name, manager_electronic_address')
-          .eq('business_email', userEmail)
+          .select('manager_display_name, manager_email_lookup')
+          .eq('business_email_lookup', userEmail)
           .maybeSingle();
 
         if (queryError) {
@@ -38,7 +38,7 @@ export function useQualifiedPerson(userEmail: string | null) {
         if (data) {
           setQpInfo({
             managerName: data.manager_display_name || null,
-            managerEmail: data.manager_electronic_address || null,
+            managerEmail: data.manager_email_lookup || null,
           });
         } else {
           setQpInfo({ managerName: null, managerEmail: null });

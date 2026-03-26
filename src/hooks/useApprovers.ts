@@ -21,8 +21,8 @@ export function useApprovers() {
       try {
         const { data, error: queryError } = await supabase
           .from('user_management')
-          .select('employee_first_name, employee_last_name, business_email, manager_electronic_address, division_manager_escalation')
-          .order('employee_first_name', { ascending: true });
+          .select('employee_display_name, business_email_lookup, manager_email_lookup, division_manager_email_lookup')
+          .order('employee_display_name', { ascending: true });
 
         if (queryError) {
           throw queryError;
@@ -30,12 +30,12 @@ export function useApprovers() {
 
         if (data) {
           const approversList: ApproverInfo[] = data
-            .filter((row) => row.employee_first_name && row.employee_last_name && row.business_email)
+            .filter((row) => row.employee_display_name && row.business_email_lookup)
             .map((row) => ({
-              fullName: `${row.employee_first_name} ${row.employee_last_name}`,
-              businessEmail: row.business_email,
-              managerEmail: row.manager_electronic_address || null,
-              divisionManagerEmail: row.division_manager_escalation || null,
+              fullName: row.employee_display_name,
+              businessEmail: row.business_email_lookup,
+              managerEmail: row.manager_email_lookup || null,
+              divisionManagerEmail: row.division_manager_email_lookup || null,
             }));
 
           setApprovers(approversList);

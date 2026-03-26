@@ -71,7 +71,7 @@ async function fetchAllUserManagementItems(
   const listId = listData.id;
 
   let allItems: any[] = [];
-  let nextLink = `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${listId}/items?$expand=fields`;
+  let nextLink = `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${listId}/items?$expand=fields($select=*,$expand=BusinessEmail0,Manageremail,DivisionManager_x002f_Escelation)`;
 
   while (nextLink) {
     const itemsResponse = await fetch(nextLink, {
@@ -112,6 +112,11 @@ Deno.serve(async (req: Request) => {
 
     const usersToInsert = items.map((item) => {
       const fields = item.fields || {};
+
+      const businessEmailObj = fields.BusinessEmail0;
+      const managerEmailObj = fields.Manageremail;
+      const divisionManagerObj = fields.DivisionManager_x002f_Escelation;
+
       return {
         id: fields.ID || fields.id,
         title: fields.Title || null,
@@ -123,6 +128,10 @@ Deno.serve(async (req: Request) => {
         location_description: fields.LocationDescription || null,
         job_assignment_name: fields.JobAssignmentName || null,
         division_manager_escalation: fields.DivisionManager_x002f_Escelation || null,
+        employee_display_name: businessEmailObj?.Title || businessEmailObj?.LookupValue || null,
+        business_email_lookup: businessEmailObj?.Email || null,
+        manager_email_lookup: managerEmailObj?.Email || null,
+        division_manager_email_lookup: divisionManagerObj?.Email || null,
         created: fields.Created || null,
         modified: fields.Modified || null,
         synced_at: new Date().toISOString(),
