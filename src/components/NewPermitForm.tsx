@@ -994,22 +994,24 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                 </ul>
               </div>
 
-              <div className="border border-gray-200 rounded-md p-4 mb-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <div className={`${showDocumentError ? 'border-red-500 bg-red-50' : ''} ${showDocumentError ? 'border rounded-md p-2' : ''}`}>
-                    <h3 className="text-xs font-semibold text-gray-900 mb-3">
-                      Permitting Application <span className="text-red-500">*</span>
-                    </h3>
-                    <label className={`flex flex-col items-center justify-center gap-2 px-3 py-5 border-2 border-dashed rounded-md cursor-pointer transition-colors ${
-                      showDocumentError
-                        ? 'border-red-500 bg-red-50 hover:bg-red-100'
-                        : 'border-gray-300 hover:bg-gray-50'
+              <div className="border border-gray-200 rounded-md p-4 mb-4 bg-gray-50">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <Upload size={16} className="text-gray-600" />
+                  Document Upload
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                  <div className={`${showDocumentError ? 'ring-2 ring-red-500' : ''} bg-white rounded-md p-3`}>
+                    <label className="block text-xs font-medium text-gray-700 mb-2">
+                      Permit Application <span className="text-red-500">*</span>
+                    </label>
+                    <label className={`flex items-center gap-2 px-2 py-2 border border-dashed rounded cursor-pointer transition-colors ${
+                      showDocumentError ? 'border-red-400 bg-red-50' : 'border-gray-300 hover:bg-gray-50'
                     }`}>
-                      <Upload size={24} className={showDocumentError ? "text-red-500" : "text-gray-400"} />
-                      <div className="text-center">
-                        <span className={`text-xs font-medium ${showDocumentError ? 'text-red-700' : 'text-gray-700'}`}>Upload Document</span>
-                        <p className={`text-[10px] mt-0.5 ${showDocumentError ? 'text-red-600' : 'text-gray-500'}`}>PDF only - Single file (Required)</p>
-                      </div>
+                      <Upload size={16} className={showDocumentError ? "text-red-500" : "text-gray-400"} />
+                      <span className={`text-xs ${showDocumentError ? 'text-red-600' : 'text-gray-600'}`}>
+                        {documentToSign ? documentToSign.name : 'Upload PDF'}
+                      </span>
                       <input
                         type="file"
                         accept=".pdf"
@@ -1020,47 +1022,32 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                         className="hidden"
                       />
                     </label>
-
                     {showDocumentError && !documentToSign && (
-                      <div className="mt-3 p-2 bg-red-100 border border-red-300 rounded-md flex items-start gap-2">
-                        <svg className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                        </svg>
-                        <p className="text-xs text-red-800 font-medium">This document is required. Please upload a PDF file to continue.</p>
-                      </div>
+                      <p className="text-[10px] text-red-600 mt-1">Required field</p>
                     )}
-
                     {documentToSign && (
-                      <div className="mt-3">
-                        <p className="text-xs font-medium text-gray-700 mb-2">Selected Document</p>
-                        <div className="flex items-center justify-between p-2 bg-gray-50 border border-gray-200 rounded-md">
-                          <div className="flex items-center gap-2 min-w-0 flex-1">
-                            <FileText size={14} className="text-gray-400 flex-shrink-0" />
-                            <span className="text-xs text-gray-700 truncate">{documentToSign.name}</span>
-                            <span className="text-[10px] text-gray-500 flex-shrink-0">
-                              ({(documentToSign.size / 1024).toFixed(1)} KB)
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={handleRemoveDocumentToSign}
-                            className="text-red-600 hover:text-red-800 text-xs font-medium ml-2 flex-shrink-0"
-                          >
-                            Remove
-                          </button>
-                        </div>
+                      <div className="flex items-center justify-between mt-2 text-[10px] text-gray-600">
+                        <span>{(documentToSign.size / 1024).toFixed(1)} KB</span>
+                        <button
+                          type="button"
+                          onClick={handleRemoveDocumentToSign}
+                          className="text-red-600 hover:text-red-800 font-medium"
+                        >
+                          Remove
+                        </button>
                       </div>
                     )}
                   </div>
 
-                  <div>
-                    <h3 className="text-xs font-semibold text-gray-900 mb-3">General Documents</h3>
-                    <label className="flex flex-col items-center justify-center gap-2 px-3 py-5 border-2 border-dashed border-gray-300 rounded-md cursor-pointer hover:bg-gray-50 transition-colors">
-                      <Upload size={24} className="text-gray-400" />
-                      <div className="text-center">
-                        <span className="text-xs font-medium text-gray-700">Choose Files</span>
-                        <p className="text-[10px] text-gray-500 mt-0.5">Select multiple images or PDFs</p>
-                      </div>
+                  <div className="bg-white rounded-md p-3">
+                    <label className="block text-xs font-medium text-gray-700 mb-2">
+                      General Documents
+                    </label>
+                    <label className="flex items-center gap-2 px-2 py-2 border border-dashed border-gray-300 rounded cursor-pointer hover:bg-gray-50 transition-colors">
+                      <Upload size={16} className="text-gray-400" />
+                      <span className="text-xs text-gray-600">
+                        {uploadedFiles.length > 0 ? `${uploadedFiles.length} file(s)` : 'Upload files'}
+                      </span>
                       <input
                         type="file"
                         accept="image/*,.pdf"
@@ -1069,42 +1056,27 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                         className="hidden"
                       />
                     </label>
-
                     {uploadedFiles.length > 0 && (
-                      <div className="mt-3">
-                        <p className="text-xs font-medium text-gray-700 mb-2">
-                          Selected Files ({uploadedFiles.length})
-                        </p>
-                        <div className="space-y-1.5">
-                          {uploadedFiles.map((file, index) => (
-                            <div
-                              key={index}
-                              className="flex items-center justify-between p-2 bg-gray-50 border border-gray-200 rounded-md"
+                      <div className="mt-2 space-y-1">
+                        {uploadedFiles.map((file, index) => (
+                          <div key={index} className="flex items-center justify-between text-[10px] text-gray-600">
+                            <span className="truncate flex-1">{file.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveFile(index)}
+                              className="text-red-600 hover:text-red-800 font-medium ml-2"
                             >
-                              <div className="flex items-center gap-2 min-w-0 flex-1">
-                                <FileText size={14} className="text-gray-400 flex-shrink-0" />
-                                <span className="text-xs text-gray-700 truncate">{file.name}</span>
-                                <span className="text-[10px] text-gray-500 flex-shrink-0">
-                                  ({(file.size / 1024).toFixed(1)} KB)
-                                </span>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveFile(index)}
-                                className="text-red-600 hover:text-red-800 text-xs font-medium ml-2 flex-shrink-0"
-                              >
-                                Remove
-                              </button>
-                            </div>
-                          ))}
-                        </div>
+                              Remove
+                            </button>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-gray-200">
-                  <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-md border border-gray-200 mb-3">
+                <div className="bg-white rounded-md p-3">
+                  <div className="flex items-center gap-2">
                     <input
                       type="checkbox"
                       id="requiresSignature"
@@ -1116,24 +1088,17 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                           setSendToApproverForSignature(false);
                         }
                       }}
-                      className="w-3.5 h-3.5 text-[#0072BC] border-gray-300 rounded focus:ring-[#0072BC] flex-shrink-0"
+                      className="w-3.5 h-3.5 text-[#0072BC] border-gray-300 rounded focus:ring-[#0072BC]"
                     />
-                    <label htmlFor="requiresSignature" className="flex-1 cursor-pointer">
-                      <span className="text-xs font-medium text-gray-900">Require Signature</span>
-                      <span className="text-[10px] text-gray-600 ml-1">
-                        (Check this if the document needs to be signed)
-                      </span>
+                    <label htmlFor="requiresSignature" className="text-xs font-medium text-gray-900 cursor-pointer">
+                      Require Signature
                     </label>
                   </div>
 
                   {requiresSignature && (
-                    <div className={`ml-6 space-y-2 p-3 rounded-md ${
-                      showSignatureError
-                        ? 'bg-red-50 border border-red-300'
-                        : 'bg-blue-50 border border-blue-200'
-                    }`}>
-                      <p className={`text-xs font-medium mb-2 ${showSignatureError ? 'text-red-900' : 'text-blue-900'}`}>
-                        Send signature request to: {showSignatureError && <span className="text-red-600">*</span>}
+                    <div className={`mt-2 pl-6 py-2 space-y-1.5 ${showSignatureError ? 'text-red-700' : ''}`}>
+                      <p className="text-[10px] font-medium mb-1">
+                        Send to: {showSignatureError && <span className="text-red-600">*</span>}
                       </p>
                       <div className="flex items-center gap-2">
                         <input
@@ -1145,14 +1110,14 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                             setSendToQpForSignature(e.target.checked);
                             setShowSignatureError(false);
                           }}
-                          className={`w-3.5 h-3.5 text-[#0072BC] border-gray-300 rounded focus:ring-[#0072BC] flex-shrink-0 ${
+                          className={`w-3 h-3 text-[#0072BC] border-gray-300 rounded focus:ring-[#0072BC] ${
                             !sendRequestToQp ? 'opacity-40 cursor-not-allowed' : ''
                           }`}
                         />
-                        <label htmlFor="sendToQpForSignature" className={`text-xs cursor-pointer ${
+                        <label htmlFor="sendToQpForSignature" className={`text-[10px] cursor-pointer ${
                           !sendRequestToQp ? 'text-gray-400' : 'text-gray-700'
                         }`}>
-                          Qualified Person (QP)
+                          Qualified Person
                         </label>
                       </div>
                       <div className="flex items-center gap-2">
@@ -1164,28 +1129,14 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                             setSendToApproverForSignature(e.target.checked);
                             setShowSignatureError(false);
                           }}
-                          className="w-3.5 h-3.5 text-[#0072BC] border-gray-300 rounded focus:ring-[#0072BC] flex-shrink-0"
+                          className="w-3 h-3 text-[#0072BC] border-gray-300 rounded focus:ring-[#0072BC]"
                         />
-                        <label htmlFor="sendToApproverForSignature" className="text-xs text-gray-700 cursor-pointer">
+                        <label htmlFor="sendToApproverForSignature" className="text-[10px] text-gray-700 cursor-pointer">
                           Approver
                         </label>
                       </div>
-
                       {showSignatureError && (
-                        <div className="mt-2 p-2 bg-red-100 border border-red-300 rounded-md flex items-start gap-2">
-                          <svg className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                          </svg>
-                          <p className="text-xs text-red-800 font-medium">Please select at least one recipient for the signature request.</p>
-                        </div>
-                      )}
-                      {(sendToQpForSignature || sendToApproverForSignature) && (
-                        <div className="mt-3 pt-3 border-t border-blue-300">
-                          <p className="text-[10px] text-blue-800 flex items-center gap-1">
-                            <CheckCircle size={12} className="text-blue-600" />
-                            Email notifications will be sent to selected recipients
-                          </p>
-                        </div>
+                        <p className="text-[10px] text-red-600 mt-1">Select at least one recipient</p>
                       )}
                     </div>
                   )}
