@@ -258,7 +258,7 @@ async function sendFailureEmail(syncType: string, errorMessage: string, supabase
         "Authorization": `Bearer ${supabaseServiceKey}`,
       },
       body: JSON.stringify({
-        to: "Rohith@katproteh.com",
+        to: "Rohith@katprotech.com",
         subject: `Sync Failure: ${syncType}`,
         syncType,
         errorMessage,
