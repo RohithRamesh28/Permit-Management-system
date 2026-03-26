@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { CheckCircle, XCircle, FileText, Clock, Eye, PlusCircle, CreditCard as Edit2, AlertCircle, Download, Upload, User } from 'lucide-react';
+import { CheckCircle, XCircle, FileText, Clock, Eye, PlusCircle, CreditCard as Edit2, AlertCircle, Download, Upload, User, Lock } from 'lucide-react';
 import { supabase, Permit, PermitDocument, PermitAuditLog } from '../lib/supabase';
 import { SignaturePad, SignaturePadRef } from './SignaturePad';
 import { generatePermitPDF, downloadPDF, mergePDFs, embedMultipleSignaturesInPDF, SignatureData } from '../services/pdfGenerator';
@@ -10,6 +10,7 @@ import { useSharePointJobs } from '../hooks/useSharePointJobs';
 import { US_STATES_AND_TERRITORIES } from '../utils/usStates';
 import DateInput from './DateInput';
 import { useAuth } from '../contexts/AuthContext';
+import { getPermitPermissions, getCurrentReviewer } from '../utils/permitPermissions';
 
 interface PermitDetailViewProps {
   permitId: string;
@@ -36,7 +37,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
   const [showResubmitConfirmModal, setShowResubmitConfirmModal] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
-  const { userName } = useAuth();
+  const { userName, userEmail } = useAuth();
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [additionalFiles, setAdditionalFiles] = useState<File[]>([]);
   const [uploadingFiles, setUploadingFiles] = useState(false);
@@ -50,6 +51,9 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
   const [qpRejectionNotes, setQpRejectionNotes] = useState('');
   const [showApproverRejectModal, setShowApproverRejectModal] = useState(false);
   const [approverRejectionNotes, setApproverRejectionNotes] = useState('');
+
+  const permissions = getPermitPermissions(permit, userEmail);
+  const currentReviewer = getCurrentReviewer(permit);
 
   useEffect(() => {
     fetchPermitDetails();
@@ -122,6 +126,10 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
   };
 
   const handleQpApproveClick = () => {
+    if (!permissions.canQpApprove) {
+      alert('You do not have permission to approve as QP. Only the assigned Qualified Person can approve at this stage.');
+      return;
+    }
     setCurrentApprovalAction('qp');
     const docUrl = getDocumentToSignUrl();
     const documentToSign = documents.find(doc => doc.document_type === 'to_sign');
@@ -135,6 +143,10 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
   };
 
   const handleApproverApproveClick = () => {
+    if (!permissions.canApproverApprove) {
+      alert('You do not have permission to approve. Only the assigned Approver can approve at this stage.');
+      return;
+    }
     setCurrentApprovalAction('approver');
     const docUrl = getDocumentToSignUrl();
     const documentToSign = documents.find(doc => doc.document_type === 'to_sign');
@@ -309,6 +321,10 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
   };
 
   const handleQpReject = async () => {
+    if (!permissions.canQpReject) {
+      alert('You do not have permission to reject as QP. Only the assigned Qualified Person can reject at this stage.');
+      return;
+    }
     if (!permit || !qpRejectionNotes.trim()) {
       alert('Please provide rejection notes');
       return;
@@ -522,6 +538,10 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
   };
 
   const handleApproverReject = async () => {
+    if (!permissions.canApproverReject) {
+      alert('You do not have permission to reject. Only the assigned Approver can reject at this stage.');
+      return;
+    }
     if (!permit || !approverRejectionNotes.trim()) {
       alert('Please provide rejection notes');
       return;
@@ -1308,9 +1328,15 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
               <span className={`px-4 py-2 rounded-full text-sm font-medium ${getStatusBadgeClass(permit.status)}`}>
                 {permit.status}
               </span>
-              {!readOnlyMode && ((permit.status === 'Rejected' && !isEditMode) || (permit.status === 'Pending Approval' && permit.rejection_notes && !isEditMode)) && (
+              {!readOnlyMode && permissions.canEdit && ((permit.status === 'Rejected' && !isEditMode) || (permit.status === 'Pending Approval' && permit.rejection_notes && !isEditMode)) && (
                 <button
-                  onClick={() => setIsEditMode(true)}
+                  onClick={() => {
+                    if (!permissions.canEdit) {
+                      alert('You do not have permission to edit this permit.');
+                      return;
+                    }
+                    setIsEditMode(true);
+                  }}
                   className="flex items-center gap-2 px-4 py-2 bg-[#0072BC] text-white rounded-lg hover:bg-[#005a94] transition-colors"
                 >
                   <Edit2 size={18} />
@@ -1854,31 +1880,63 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                   <div className="bg-gray-50 rounded-lg p-6">
                     <h2 className="text-lg font-semibold text-gray-900 mb-4">Actions</h2>
 
+                    {currentReviewer && (
+                      <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <p className="text-xs text-blue-800 font-medium">Current Reviewer</p>
+                        <p className="text-xs text-blue-700 mt-1">
+                          {currentReviewer.role}: {currentReviewer.name} ({currentReviewer.email})
+                        </p>
+                      </div>
+                    )}
+
+                    {permissions.lockReason && (
+                      <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
+                        <Lock size={16} className="text-amber-600 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="text-xs text-amber-800 font-medium">Access Restricted</p>
+                          <p className="text-xs text-amber-700 mt-1">{permissions.lockReason}</p>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="space-y-3">
                       {permit.current_stage === 'awaiting_qp' && permit.status === 'Pending Approval' && !isEditMode && (
                         <>
-                          <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                            <p className="text-xs text-amber-800 font-medium">QP Review Required</p>
-                            <p className="text-xs text-amber-700 mt-1">
-                              {permit.is_qp_signature_required ? 'QP must sign the document to approve' : 'QP approval needed before Division Approver'}
-                            </p>
-                          </div>
-                          <button
-                            onClick={handleQpApproveClick}
-                            disabled={actionInProgress}
-                            className="w-full flex items-center justify-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
-                          >
-                            <CheckCircle size={18} />
-                            {permit.is_qp_signature_required ? 'Sign and Approve as QP' : 'Approve as QP'}
-                          </button>
-                          <button
-                            onClick={() => setShowQpRejectModal(true)}
-                            disabled={actionInProgress}
-                            className="w-full flex items-center justify-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
-                          >
-                            <XCircle size={18} />
-                            Reject as QP
-                          </button>
+                          {!permissions.canQpApprove && (
+                            <div className="p-4 bg-gray-100 border border-gray-300 rounded-lg text-center">
+                              <Lock size={24} className="text-gray-500 mx-auto mb-2" />
+                              <p className="text-sm text-gray-700 font-medium">QP Approval Actions Locked</p>
+                              <p className="text-xs text-gray-600 mt-1">
+                                Only {permit.qp_name || permit.qp_email} can approve or reject at this stage
+                              </p>
+                            </div>
+                          )}
+                          {permissions.canQpApprove && (
+                            <>
+                              <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                <p className="text-xs text-amber-800 font-medium">QP Review Required</p>
+                                <p className="text-xs text-amber-700 mt-1">
+                                  {permit.is_qp_signature_required ? 'QP must sign the document to approve' : 'QP approval needed before Division Approver'}
+                                </p>
+                              </div>
+                              <button
+                                onClick={handleQpApproveClick}
+                                disabled={actionInProgress}
+                                className="w-full flex items-center justify-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                              >
+                                <CheckCircle size={18} />
+                                {permit.is_qp_signature_required ? 'Sign and Approve as QP' : 'Approve as QP'}
+                              </button>
+                              <button
+                                onClick={() => setShowQpRejectModal(true)}
+                                disabled={actionInProgress}
+                                className="w-full flex items-center justify-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+                              >
+                                <XCircle size={18} />
+                                Reject as QP
+                              </button>
+                            </>
+                          )}
                         </>
                       )}
 
@@ -1892,28 +1950,41 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                               </p>
                             </div>
                           )}
-                          <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                            <p className="text-xs text-amber-800 font-medium">Division Approver Review Required</p>
-                            <p className="text-xs text-amber-700 mt-1">
-                              {permit.is_approver_signature_required ? 'Approver must sign the document to approve' : 'Final approval needed to activate permit'}
-                            </p>
-                          </div>
-                          <button
-                            onClick={handleApproverApproveClick}
-                            disabled={actionInProgress}
-                            className="w-full flex items-center justify-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
-                          >
-                            <CheckCircle size={18} />
-                            {permit.is_approver_signature_required ? 'Sign and Approve' : 'Approve'}
-                          </button>
-                          <button
-                            onClick={() => setShowApproverRejectModal(true)}
-                            disabled={actionInProgress}
-                            className="w-full flex items-center justify-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
-                          >
-                            <XCircle size={18} />
-                            Reject
-                          </button>
+                          {!permissions.canApproverApprove && (
+                            <div className="p-4 bg-gray-100 border border-gray-300 rounded-lg text-center">
+                              <Lock size={24} className="text-gray-500 mx-auto mb-2" />
+                              <p className="text-sm text-gray-700 font-medium">Approver Actions Locked</p>
+                              <p className="text-xs text-gray-600 mt-1">
+                                Only {permit.approver_name || permit.approver_email} can approve or reject at this stage
+                              </p>
+                            </div>
+                          )}
+                          {permissions.canApproverApprove && (
+                            <>
+                              <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                <p className="text-xs text-amber-800 font-medium">Division Approver Review Required</p>
+                                <p className="text-xs text-amber-700 mt-1">
+                                  {permit.is_approver_signature_required ? 'Approver must sign the document to approve' : 'Final approval needed to activate permit'}
+                                </p>
+                              </div>
+                              <button
+                                onClick={handleApproverApproveClick}
+                                disabled={actionInProgress}
+                                className="w-full flex items-center justify-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                              >
+                                <CheckCircle size={18} />
+                                {permit.is_approver_signature_required ? 'Sign and Approve' : 'Approve'}
+                              </button>
+                              <button
+                                onClick={() => setShowApproverRejectModal(true)}
+                                disabled={actionInProgress}
+                                className="w-full flex items-center justify-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+                              >
+                                <XCircle size={18} />
+                                Reject
+                              </button>
+                            </>
+                          )}
                         </>
                       )}
 
