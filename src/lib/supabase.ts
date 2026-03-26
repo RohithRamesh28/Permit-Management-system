@@ -9,6 +9,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+export type ApprovalStage = 'awaiting_qp' | 'awaiting_approver' | 'active' | 'rejected' | 'closed';
+
 export interface Permit {
   id: string;
   permit_id: string;
@@ -42,6 +44,34 @@ export interface Permit {
   approved_by?: string;
   created_at: string;
   updated_at: string;
+  permit_jurisdiction_type?: string;
+  permit_jurisdiction?: string;
+  qp_name?: string;
+  qp_email?: string;
+  license_list_used?: string;
+  matched_license_item_id?: string;
+  approver_name?: string;
+  approver_email?: string;
+  approver_manager_email?: string;
+  approver_division_manager_email?: string;
+  send_to_qp_for_signature?: boolean;
+  send_to_approver_for_signature?: boolean;
+  current_stage?: ApprovalStage;
+  send_to_qp?: boolean;
+  is_qp_signature_required?: boolean;
+  is_approver_signature_required?: boolean;
+  qp_approved_at?: string;
+  qp_approved_by?: string;
+  qp_rejected_at?: string;
+  qp_rejected_by?: string;
+  qp_rejection_notes?: string;
+  approver_approved_at?: string;
+  approver_rejected_at?: string;
+  approver_rejection_notes?: string;
+  resubmission_count?: number;
+  closed_at?: string;
+  closed_by?: string;
+  close_notes?: string;
 }
 
 export interface PermitDocument {

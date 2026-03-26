@@ -74,7 +74,15 @@ export default function PermitListView({ onNavigate, onSelectPermit }: PermitLis
     setFilteredPermits(filtered);
   };
 
-  const getStatusBadgeClass = (status: string) => {
+  const getStatusBadgeClass = (status: string, currentStage?: string) => {
+    if (status === 'Pending Approval' && currentStage) {
+      if (currentStage === 'awaiting_qp') {
+        return 'bg-amber-100 text-amber-800';
+      }
+      if (currentStage === 'awaiting_approver') {
+        return 'bg-blue-100 text-blue-800';
+      }
+    }
     switch (status) {
       case 'Pending Approval':
         return 'bg-yellow-100 text-yellow-800';
@@ -87,6 +95,18 @@ export default function PermitListView({ onNavigate, onSelectPermit }: PermitLis
       default:
         return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  const getStatusDisplay = (permit: Permit) => {
+    if (permit.status === 'Pending Approval' && permit.current_stage) {
+      if (permit.current_stage === 'awaiting_qp') {
+        return `Awaiting QP (${permit.qp_name || 'QP'})`;
+      }
+      if (permit.current_stage === 'awaiting_approver') {
+        return `Awaiting Approver (${permit.approver_name || 'Approver'})`;
+      }
+    }
+    return permit.status;
   };
 
   const formatDate = (dateString: string) => {
@@ -228,8 +248,8 @@ export default function PermitListView({ onNavigate, onSelectPermit }: PermitLis
                       <td className="px-6 py-4 text-sm text-gray-700">{permit.state}</td>
                       <td className="px-6 py-4 text-sm text-gray-700">{permit.city}</td>
                       <td className="px-6 py-4">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(permit.status)}`}>
-                          {permit.status}
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(permit.status, permit.current_stage)}`}>
+                          {getStatusDisplay(permit)}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-700">{formatDate(permit.date_of_request)}</td>

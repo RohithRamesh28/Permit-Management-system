@@ -308,6 +308,8 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
         ? "Electrical Permit"
         : "Specialty/Tower Permit";
 
+      const initialStage = sendRequestToQp ? 'awaiting_qp' : 'awaiting_approver';
+
       const { data: permitData, error: permitError } = await supabase
         .from('permits')
         .insert([
@@ -344,6 +346,11 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
             approver_email: selectedApprover?.businessEmail || null,
             approver_manager_email: selectedApprover?.managerEmail || null,
             approver_division_manager_email: selectedApprover?.divisionManagerEmail || null,
+            current_stage: initialStage,
+            send_to_qp: sendRequestToQp,
+            is_qp_signature_required: sendToQpForSignature,
+            is_approver_signature_required: sendToApproverForSignature,
+            resubmission_count: 0,
           },
         ])
         .select()
@@ -433,6 +440,8 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
 
       const powerAutomateUrl = 'https://default3596b7c39b4b4ef89dde39825373af.28.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/c9bb3dc15bc34e1681cdcdda36db4cee/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=XflS1U3z0zJ8icT07Wzj8nTU2o0VIG0xnbt92ohpfZI';
 
+      const documentToSignFile = fileUrls.find(f => f.documentType === 'to_sign');
+
       const payload = {
         timing_id: permitData.id.toString(),
         unique_id: permitId,
@@ -455,11 +464,23 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
         project_value: parseInt(formData.project_value) || 0,
         actual_date_of_completion: formData.actual_date_of_completion || '',
         detailed_sow: formData.detailed_sow,
-        status: 'awaiting approval',
+        status: 'submitted',
         requires_signature: requiresSignature,
         uploaded_files_count: fileUrls.length,
         uploaded_files: fileUrls,
         created_at: new Date().toISOString(),
+        qp_email: qpEmail,
+        qp_name: qpName,
+        approver_email: selectedApprover?.businessEmail || '',
+        approver_name: selectedApprover?.fullName || '',
+        approver_manager_email: selectedApprover?.managerEmail || '',
+        division_escalation_email: selectedApprover?.divisionManagerEmail || '',
+        send_to_qp: sendRequestToQp,
+        is_qp_signature_required: sendToQpForSignature,
+        is_approver_signature_required: sendToApproverForSignature,
+        current_stage: initialStage,
+        document_to_sign_url: documentToSignFile?.url || '',
+        signed_pdf_url: '',
       };
 
       try {

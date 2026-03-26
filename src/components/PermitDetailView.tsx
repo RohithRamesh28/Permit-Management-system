@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, CheckCircle, XCircle, FileText, Clock, Eye, PlusCircle, CreditCard as Edit2, AlertCircle, Download, Upload } from 'lucide-react';
+import { CheckCircle, XCircle, FileText, Clock, Eye, PlusCircle, CreditCard as Edit2, AlertCircle, Download, Upload, User } from 'lucide-react';
 import { supabase, Permit, PermitDocument, PermitAuditLog } from '../lib/supabase';
 import { SignaturePad, SignaturePadRef } from './SignaturePad';
 import { generatePermitPDF, downloadPDF, mergePDFs, embedMultipleSignaturesInPDF, SignatureData } from '../services/pdfGenerator';
@@ -45,6 +45,11 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
   const [signaturePosition, setSignaturePosition] = useState<{ x: number; y: number } | null>(null);
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [closeNotes, setCloseNotes] = useState('');
+  const [currentApprovalAction, setCurrentApprovalAction] = useState<'qp' | 'approver' | null>(null);
+  const [showQpRejectModal, setShowQpRejectModal] = useState(false);
+  const [qpRejectionNotes, setQpRejectionNotes] = useState('');
+  const [showApproverRejectModal, setShowApproverRejectModal] = useState(false);
+  const [approverRejectionNotes, setApproverRejectionNotes] = useState('');
 
   useEffect(() => {
     fetchPermitDetails();
@@ -108,6 +113,40 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
   };
 
 
+  const getDocumentToSignUrl = () => {
+    if (permit?.signed_document_url) {
+      return permit.signed_document_url;
+    }
+    const documentToSign = documents.find(doc => doc.document_type === 'to_sign');
+    return documentToSign?.file_url || null;
+  };
+
+  const handleQpApproveClick = () => {
+    setCurrentApprovalAction('qp');
+    const docUrl = getDocumentToSignUrl();
+    const documentToSign = documents.find(doc => doc.document_type === 'to_sign');
+
+    if (permit?.is_qp_signature_required && docUrl) {
+      setPdfToSign({ url: docUrl, name: documentToSign?.file_name || 'Permit Application' });
+      setShowPdfSignModal(true);
+    } else {
+      handleQpApprove();
+    }
+  };
+
+  const handleApproverApproveClick = () => {
+    setCurrentApprovalAction('approver');
+    const docUrl = getDocumentToSignUrl();
+    const documentToSign = documents.find(doc => doc.document_type === 'to_sign');
+
+    if (permit?.is_approver_signature_required && docUrl) {
+      setPdfToSign({ url: docUrl, name: documentToSign?.file_name || 'Permit Application' });
+      setShowPdfSignModal(true);
+    } else {
+      handleApproverApprove();
+    }
+  };
+
   const handleApproveClick = () => {
     const documentToSign = documents.find(doc => doc.document_type === 'to_sign');
 
@@ -130,15 +169,17 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
     setSignaturePosition(firstSignature.position);
     setShowPdfSignModal(false);
 
+    const docUrl = getDocumentToSignUrl();
     const documentToSign = documents.find(doc => doc.document_type === 'to_sign');
-    if (documentToSign) {
+
+    if (docUrl) {
       try {
         const signedPdfBlob = await embedMultipleSignaturesInPDF(
-          documentToSign.file_url,
+          docUrl,
           signatures
         );
 
-        const signedFileName = `signed_${Date.now()}_${documentToSign.file_name}`;
+        const signedFileName = `signed_${Date.now()}_${documentToSign?.file_name || 'permit.pdf'}`;
         const { error: uploadError } = await supabase.storage
           .from('permit-pdfs')
           .upload(signedFileName, signedPdfBlob, {
@@ -159,17 +200,410 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
             signature_data_url: firstSignature.signatureData
           })
           .eq('id', permitId);
+
+        setPdfToSign(null);
+
+        if (currentApprovalAction === 'qp') {
+          await handleQpApprove(firstSignature.signatureData, publicUrl);
+        } else if (currentApprovalAction === 'approver') {
+          await handleApproverApprove(firstSignature.signatureData, publicUrl);
+        } else {
+          await handleApprove(firstSignature.signatureData);
+        }
+        return;
       } catch (error) {
         console.error('Error creating signed PDF:', error);
       }
     }
 
     setPdfToSign(null);
-    await handleApprove(firstSignature.signatureData);
+
+    if (currentApprovalAction === 'qp') {
+      await handleQpApprove(firstSignature.signatureData);
+    } else if (currentApprovalAction === 'approver') {
+      await handleApproverApprove(firstSignature.signatureData);
+    } else {
+      await handleApprove(firstSignature.signatureData);
+    }
   };
 
   const handleRejectClick = () => {
     setShowRejectModal(true);
+  };
+
+  const handleQpApprove = async (signatureData?: string, signedPdfUrl?: string) => {
+    if (!permit) return;
+    setActionInProgress(true);
+
+    try {
+      const qpName = permit.qp_name || userName || 'QP';
+      const updateData: any = {
+        current_stage: 'awaiting_approver',
+        qp_approved_at: new Date().toISOString(),
+        qp_approved_by: qpName,
+        qp_rejection_notes: null,
+      };
+
+      if (signedPdfUrl) {
+        updateData.signed_document_url = signedPdfUrl;
+      }
+
+      const { error: updateError } = await supabase
+        .from('permits')
+        .update(updateData)
+        .eq('id', permitId);
+
+      if (updateError) throw updateError;
+
+      await supabase.from('permit_audit_log').insert([
+        {
+          permit_id: permitId,
+          action: 'QP Approved',
+          performed_by: qpName,
+          notes: signatureData ? 'QP approved with signature' : 'QP approved permit',
+        },
+      ]);
+
+      const powerAutomateUrl = 'https://default3596b7c39b4b4ef89dde39825373af.28.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/c9bb3dc15bc34e1681cdcdda36db4cee/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=XflS1U3z0zJ8icT07Wzj8nTU2o0VIG0xnbt92ohpfZI';
+
+      const payload = {
+        timing_id: permitId,
+        unique_id: permit.permit_id,
+        action: 'qp_approved',
+        current_stage: 'awaiting_approver',
+        qp_approved_by: qpName,
+        qp_approved_at: new Date().toISOString(),
+        signed_pdf_url: signedPdfUrl || permit.signed_document_url || '',
+        approver_email: permit.approver_email || '',
+        approver_name: permit.approver_name || '',
+        submitter_email: permit.requester_email || '',
+        submitter_name: permit.requestor || '',
+        qp_email: permit.qp_email || '',
+        qp_name: permit.qp_name || '',
+        is_qp_signature_required: permit.is_qp_signature_required,
+        is_approver_signature_required: permit.is_approver_signature_required,
+      };
+
+      try {
+        await fetch(powerAutomateUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } catch (flowError) {
+        console.error('Error sending to Power Automate:', flowError);
+      }
+
+      setCurrentApprovalAction(null);
+      await fetchPermitDetails();
+
+      setSuccessMessage('QP approval recorded. Permit sent to Approver.');
+      setShowSuccessToast(true);
+      setTimeout(() => setShowSuccessToast(false), 3000);
+    } catch (error) {
+      console.error('Error in QP approval:', error);
+      alert('Error processing QP approval. Please try again.');
+    } finally {
+      setActionInProgress(false);
+    }
+  };
+
+  const handleQpReject = async () => {
+    if (!permit || !qpRejectionNotes.trim()) {
+      alert('Please provide rejection notes');
+      return;
+    }
+    setActionInProgress(true);
+
+    try {
+      const qpName = permit.qp_name || userName || 'QP';
+
+      const { error: updateError } = await supabase
+        .from('permits')
+        .update({
+          current_stage: 'rejected',
+          status: 'Rejected',
+          qp_rejected_at: new Date().toISOString(),
+          qp_rejected_by: qpName,
+          qp_rejection_notes: qpRejectionNotes,
+          rejection_notes: `Rejected by QP: ${qpRejectionNotes}`,
+        })
+        .eq('id', permitId);
+
+      if (updateError) throw updateError;
+
+      await supabase.from('permit_audit_log').insert([
+        {
+          permit_id: permitId,
+          action: 'QP Rejected',
+          performed_by: qpName,
+          notes: qpRejectionNotes,
+        },
+      ]);
+
+      const powerAutomateUrl = 'https://default3596b7c39b4b4ef89dde39825373af.28.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/c9bb3dc15bc34e1681cdcdda36db4cee/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=XflS1U3z0zJ8icT07Wzj8nTU2o0VIG0xnbt92ohpfZI';
+
+      const payload = {
+        timing_id: permitId,
+        unique_id: permit.permit_id,
+        action: 'qp_rejected',
+        current_stage: 'rejected',
+        qp_rejected_by: qpName,
+        qp_rejected_at: new Date().toISOString(),
+        rejection_reason: qpRejectionNotes,
+        submitter_email: permit.requester_email || '',
+        submitter_name: permit.requestor || '',
+        qp_email: permit.qp_email || '',
+        qp_name: permit.qp_name || '',
+      };
+
+      try {
+        await fetch(powerAutomateUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } catch (flowError) {
+        console.error('Error sending to Power Automate:', flowError);
+      }
+
+      setShowQpRejectModal(false);
+      setQpRejectionNotes('');
+      await fetchPermitDetails();
+
+      setSuccessMessage('Permit rejected by QP');
+      setShowSuccessToast(true);
+      setTimeout(() => setShowSuccessToast(false), 3000);
+    } catch (error) {
+      console.error('Error in QP rejection:', error);
+      alert('Error processing QP rejection. Please try again.');
+    } finally {
+      setActionInProgress(false);
+    }
+  };
+
+  const handleApproverApprove = async (signatureData?: string, signedPdfUrl?: string) => {
+    if (!permit) return;
+    setActionInProgress(true);
+
+    try {
+      const approverName = permit.approver_name || userName || 'Approver';
+      const finalPdfUrl = signedPdfUrl || permit.signed_document_url || '';
+
+      const updateData: any = {
+        current_stage: 'active',
+        status: 'Active',
+        approver_approved_at: new Date().toISOString(),
+        approved_by: approverName,
+        approver_rejection_notes: null,
+      };
+
+      if (signedPdfUrl) {
+        updateData.signed_document_url = signedPdfUrl;
+        updateData.signed_pdf_url = signedPdfUrl;
+      }
+
+      const pdfBlob = generatePermitPDF({
+        requestor: permit.requestor || '',
+        requester_type: permit.requester_type || '',
+        requester_email: permit.requester_email || '',
+        date_of_request: permit.date_of_request || '',
+        ontivity_project_number: permit.ontivity_project_number || '',
+        performing_entity: permit.performing_entity || '',
+        date_of_project_commencement: permit.date_of_project_commencement || '',
+        estimated_date_of_completion: permit.estimated_date_of_completion?.toString() || '',
+        type_of_permit: permit.type_of_permit || '',
+        utility_provider: permit.utility_provider || '',
+        state: permit.state || '',
+        county_or_parish: permit.county_or_parish || '',
+        city: permit.city || '',
+        land_owner: permit.land_owner || '',
+        tower_owner: permit.tower_owner || '',
+        end_customer: permit.end_customer || '',
+        project_value: permit.project_value?.toString() || '0',
+        actual_date_of_completion: permit.actual_date_of_completion || '',
+        detailed_sow: permit.detailed_sow || '',
+        requiresSignature: permit.requires_signature || false,
+        signatureDataUrl: signatureData,
+        status: 'Approved',
+        signerName: approverName,
+        approvedBy: approverName,
+        approvedAt: new Date().toLocaleDateString(),
+      });
+
+      const fileName = `permit_${permit.permit_id}_approved_${Date.now()}.pdf`;
+      const { error: uploadError } = await supabase.storage
+        .from('permit-pdfs')
+        .upload(fileName, pdfBlob, {
+          contentType: 'application/pdf',
+          upsert: false,
+        });
+
+      if (!uploadError) {
+        const { data: { publicUrl } } = supabase.storage
+          .from('permit-pdfs')
+          .getPublicUrl(fileName);
+        updateData.signed_pdf_url = publicUrl;
+      }
+
+      const { error: updateError } = await supabase
+        .from('permits')
+        .update(updateData)
+        .eq('id', permitId);
+
+      if (updateError) throw updateError;
+
+      await supabase.from('permit_audit_log').insert([
+        {
+          permit_id: permitId,
+          action: 'Approver Approved',
+          performed_by: approverName,
+          notes: signatureData ? 'Approver approved with signature - Permit is now Active' : 'Approver approved - Permit is now Active',
+        },
+      ]);
+
+      const approveUrl = 'https://default3596b7c39b4b4ef89dde39825373af.28.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/53a1fbea5beb4afbbab6dd68d92a519e/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=-RTa3u1ouV89ah0pltsPZ5TM9iuSMsWvPYcVC7rGdXA';
+
+      const payload = {
+        timing_id: permitId,
+        unique_id: permit.permit_id,
+        action: 'approver_approved',
+        current_stage: 'active',
+        submitted_by: permit.requestor,
+        submitted_by_email: permit.requester_email || '',
+        requestor: permit.requestor,
+        requester_type: permit.requester_type || '',
+        ontivity_project_number: permit.ontivity_project_number,
+        performing_entity: permit.performing_entity,
+        date_of_request: permit.date_of_request,
+        date_of_project_commencement: permit.date_of_project_commencement,
+        estimated_date_of_completion: permit.estimated_date_of_completion || '',
+        type_of_permit: permit.type_of_permit,
+        utility_provider: permit.utility_provider || '',
+        state: permit.state,
+        permit_jurisdiction: permit.permit_jurisdiction || permit.state,
+        land_owner: permit.land_owner,
+        tower_owner: permit.tower_owner,
+        end_customer: permit.end_customer,
+        project_value: permit.project_value,
+        detailed_sow: permit.detailed_sow,
+        status: 'approved',
+        approved_by: approverName,
+        approved_at: new Date().toISOString(),
+        pdf_url: updateData.signed_pdf_url || finalPdfUrl,
+        qp_name: permit.qp_name || '',
+        qp_email: permit.qp_email || '',
+        approver_name: permit.approver_name || '',
+        approver_email: permit.approver_email || '',
+      };
+
+      try {
+        await fetch(approveUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } catch (flowError) {
+        console.error('Error sending to Power Automate:', flowError);
+      }
+
+      setCurrentApprovalAction(null);
+      await fetchPermitDetails();
+
+      setSuccessMessage('Permit approved and activated');
+      setShowSuccessToast(true);
+      setTimeout(() => setShowSuccessToast(false), 3000);
+    } catch (error) {
+      console.error('Error in Approver approval:', error);
+      alert('Error processing approval. Please try again.');
+    } finally {
+      setActionInProgress(false);
+    }
+  };
+
+  const handleApproverReject = async () => {
+    if (!permit || !approverRejectionNotes.trim()) {
+      alert('Please provide rejection notes');
+      return;
+    }
+    setActionInProgress(true);
+
+    try {
+      const approverName = permit.approver_name || userName || 'Approver';
+      const newStage = permit.send_to_qp ? 'awaiting_qp' : 'awaiting_approver';
+
+      const { error: updateError } = await supabase
+        .from('permits')
+        .update({
+          current_stage: 'rejected',
+          status: 'Rejected',
+          approver_rejected_at: new Date().toISOString(),
+          approver_rejection_notes: approverRejectionNotes,
+          rejection_notes: `Rejected by Approver: ${approverRejectionNotes}`,
+          qp_approved_at: null,
+          qp_approved_by: null,
+        })
+        .eq('id', permitId);
+
+      if (updateError) throw updateError;
+
+      await supabase.from('permit_audit_log').insert([
+        {
+          permit_id: permitId,
+          action: 'Approver Rejected',
+          performed_by: approverName,
+          notes: approverRejectionNotes,
+        },
+      ]);
+
+      const rejectUrl = 'https://default3596b7c39b4b4ef89dde39825373af.28.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/cc32f91623ff4302a6937d2e52aa4b7e/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=IN1DCrsjUtx5xWKO5GePRXi3BRGytChJSpau4Pe3Wr8';
+
+      const payload = {
+        timing_id: permitId,
+        unique_id: permit.permit_id,
+        action: 'approver_rejected',
+        current_stage: 'rejected',
+        submitted_by: permit.requestor,
+        submitted_by_email: permit.requester_email || '',
+        requestor: permit.requestor,
+        requester_type: permit.requester_type || '',
+        ontivity_project_number: permit.ontivity_project_number,
+        performing_entity: permit.performing_entity,
+        status: 'rejected',
+        rejection_reason: approverRejectionNotes,
+        rejected_by: approverName,
+        rejected_at: new Date().toISOString(),
+        send_to_qp: permit.send_to_qp,
+        next_stage_on_resubmit: newStage,
+        qp_email: permit.qp_email || '',
+        qp_name: permit.qp_name || '',
+        approver_email: permit.approver_email || '',
+        approver_name: permit.approver_name || '',
+      };
+
+      try {
+        await fetch(rejectUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } catch (flowError) {
+        console.error('Error sending to Power Automate:', flowError);
+      }
+
+      setShowApproverRejectModal(false);
+      setApproverRejectionNotes('');
+      await fetchPermitDetails();
+
+      setSuccessMessage('Permit rejected by Approver');
+      setShowSuccessToast(true);
+      setTimeout(() => setShowSuccessToast(false), 3000);
+    } catch (error) {
+      console.error('Error in Approver rejection:', error);
+      alert('Error processing rejection. Please try again.');
+    } finally {
+      setActionInProgress(false);
+    }
   };
 
   const handleApprove = async (signatureData?: string) => {
@@ -436,8 +870,13 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
     setShowResubmitConfirmModal(false);
 
     try {
-      const updateData = {
+      const newStage = permit.send_to_qp ? 'awaiting_qp' : 'awaiting_approver';
+      const newResubmissionCount = (permit.resubmission_count || 0) + 1;
+
+      const updateData: any = {
         status: 'Pending Approval',
+        current_stage: newStage,
+        resubmission_count: newResubmissionCount,
         permit_jurisdiction_type: editFormData.permit_jurisdiction_type,
         ontivity_project_number: editFormData.ontivity_project_number,
         performing_entity: editFormData.performing_entity,
@@ -454,6 +893,15 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         actual_date_of_completion: editFormData.actual_date_of_completion || null,
         detailed_sow: editFormData.detailed_sow,
         requester_type: editFormData.requester_type,
+        rejection_notes: null,
+        qp_approved_at: null,
+        qp_approved_by: null,
+        qp_rejected_at: null,
+        qp_rejected_by: null,
+        qp_rejection_notes: null,
+        approver_approved_at: null,
+        approver_rejected_at: null,
+        approver_rejection_notes: null,
       };
 
       const { error: updateError } = await supabase
@@ -468,7 +916,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
           permit_id: permitId,
           action: 'Resubmitted',
           performed_by: permit.requestor,
-          notes: 'Permit resubmitted for approval with updates',
+          notes: `Permit resubmitted for approval (resubmission #${newResubmissionCount})`,
         },
       ]);
 
@@ -496,8 +944,17 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         project_value: parseFloat(editFormData.project_value) || 0,
         detailed_sow: editFormData.detailed_sow,
         status: 'resubmitted',
+        current_stage: newStage,
+        resubmission_count: newResubmissionCount,
         resubmitted_by: permit.requestor,
         resubmitted_at: new Date().toISOString(),
+        send_to_qp: permit.send_to_qp,
+        qp_email: permit.qp_email || '',
+        qp_name: permit.qp_name || '',
+        approver_email: permit.approver_email || '',
+        approver_name: permit.approver_name || '',
+        is_qp_signature_required: permit.is_qp_signature_required,
+        is_approver_signature_required: permit.is_approver_signature_required,
       };
 
       try {
@@ -657,9 +1114,17 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
     setActionInProgress(true);
 
     try {
+      const closedByName = userName || 'System Admin';
+
       const { error: updateError } = await supabase
         .from('permits')
-        .update({ status: 'Closed' })
+        .update({
+          status: 'Closed',
+          current_stage: 'closed',
+          closed_at: new Date().toISOString(),
+          closed_by: closedByName,
+          close_notes: closeNotes.trim() || null,
+        })
         .eq('id', permitId);
 
       if (updateError) throw updateError;
@@ -668,10 +1133,58 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         {
           permit_id: permitId,
           action: 'Closed',
-          performed_by: userName || 'System Admin',
+          performed_by: closedByName,
           notes: closeNotes.trim() || 'Permit closed',
         },
       ]);
+
+      const closeUrl = 'https://default3596b7c39b4b4ef89dde39825373af.28.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/d415d1c1a7af494cbd91ce5781625b02/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=hN8HtZumzbycXvEqLOARRhcDWPk1uKNAHaEva9H-IJE';
+
+      const payload = {
+        timing_id: permitId,
+        unique_id: permit.permit_id,
+        action: 'closed',
+        current_stage: 'closed',
+        status: 'closed',
+        submitted_by: permit.requestor,
+        submitted_by_email: permit.requester_email || '',
+        requestor: permit.requestor,
+        requester_type: permit.requester_type || '',
+        ontivity_project_number: permit.ontivity_project_number,
+        performing_entity: permit.performing_entity,
+        date_of_request: permit.date_of_request,
+        date_of_project_commencement: permit.date_of_project_commencement,
+        estimated_date_of_completion: permit.estimated_date_of_completion || '',
+        type_of_permit: permit.type_of_permit,
+        utility_provider: permit.utility_provider || '',
+        state: permit.state,
+        permit_jurisdiction: permit.permit_jurisdiction || permit.state,
+        land_owner: permit.land_owner,
+        tower_owner: permit.tower_owner,
+        end_customer: permit.end_customer,
+        project_value: permit.project_value,
+        detailed_sow: permit.detailed_sow,
+        actual_date_of_completion: permit.actual_date_of_completion || '',
+        closed_by: closedByName,
+        closed_at: new Date().toISOString(),
+        close_notes: closeNotes.trim() || '',
+        approved_by: permit.approved_by || '',
+        qp_name: permit.qp_name || '',
+        qp_email: permit.qp_email || '',
+        approver_name: permit.approver_name || '',
+        approver_email: permit.approver_email || '',
+        signed_pdf_url: permit.signed_pdf_url || '',
+      };
+
+      try {
+        await fetch(closeUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } catch (flowError) {
+        console.error('Error sending to Power Automate:', flowError);
+      }
 
       setShowCloseModal(false);
       setCloseNotes('');
@@ -1313,31 +1826,88 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
               </div>
 
               <div className="space-y-6">
+                {permit.current_stage && permit.status === 'Pending Approval' && (
+                  <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <User size={18} className="text-blue-600" />
+                      <h3 className="text-sm font-semibold text-blue-900">
+                        {permit.current_stage === 'awaiting_qp' ? 'Awaiting QP Review' : 'Awaiting Approver Review'}
+                      </h3>
+                    </div>
+                    <div className="text-sm text-blue-800">
+                      {permit.current_stage === 'awaiting_qp' ? (
+                        <p><span className="font-medium">QP:</span> {permit.qp_name || 'Not assigned'}</p>
+                      ) : (
+                        <p><span className="font-medium">Approver:</span> {permit.approver_name || 'Not assigned'}</p>
+                      )}
+                    </div>
+                    {permit.is_qp_signature_required && permit.current_stage === 'awaiting_qp' && (
+                      <p className="text-xs text-blue-700 mt-2">QP signature required</p>
+                    )}
+                    {permit.is_approver_signature_required && permit.current_stage === 'awaiting_approver' && (
+                      <p className="text-xs text-blue-700 mt-2">Approver signature required</p>
+                    )}
+                  </div>
+                )}
+
                 {!readOnlyMode && (
                   <div className="bg-gray-50 rounded-lg p-6">
                     <h2 className="text-lg font-semibold text-gray-900 mb-4">Actions</h2>
 
-                    {permit.requires_signature && !permit.signature_image_url && permit.status === 'Pending Approval' && (
-                      <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                        <p className="text-xs text-yellow-800">
-                          This permit requires a signature for approval
-                        </p>
-                      </div>
-                    )}
-
                     <div className="space-y-3">
-                      {permit.status === 'Pending Approval' && !permit.rejection_notes && !isEditMode && (
+                      {permit.current_stage === 'awaiting_qp' && permit.status === 'Pending Approval' && !isEditMode && (
                         <>
+                          <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                            <p className="text-xs text-amber-800 font-medium">QP Review Required</p>
+                            <p className="text-xs text-amber-700 mt-1">
+                              {permit.is_qp_signature_required ? 'QP must sign the document to approve' : 'QP approval needed before Division Approver'}
+                            </p>
+                          </div>
                           <button
-                            onClick={handleApproveClick}
+                            onClick={handleQpApproveClick}
                             disabled={actionInProgress}
                             className="w-full flex items-center justify-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
                           >
                             <CheckCircle size={18} />
-                            {permit.requires_signature ? 'Sign and Approve' : 'Approve'}
+                            {permit.is_qp_signature_required ? 'Sign and Approve as QP' : 'Approve as QP'}
                           </button>
                           <button
-                            onClick={handleRejectClick}
+                            onClick={() => setShowQpRejectModal(true)}
+                            disabled={actionInProgress}
+                            className="w-full flex items-center justify-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+                          >
+                            <XCircle size={18} />
+                            Reject as QP
+                          </button>
+                        </>
+                      )}
+
+                      {permit.current_stage === 'awaiting_approver' && permit.status === 'Pending Approval' && !isEditMode && (
+                        <>
+                          {permit.qp_approved_by && (
+                            <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                              <p className="text-xs text-green-800 font-medium">QP Approved</p>
+                              <p className="text-xs text-green-700 mt-1">
+                                Approved by {permit.qp_approved_by}
+                              </p>
+                            </div>
+                          )}
+                          <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                            <p className="text-xs text-amber-800 font-medium">Division Approver Review Required</p>
+                            <p className="text-xs text-amber-700 mt-1">
+                              {permit.is_approver_signature_required ? 'Approver must sign the document to approve' : 'Final approval needed to activate permit'}
+                            </p>
+                          </div>
+                          <button
+                            onClick={handleApproverApproveClick}
+                            disabled={actionInProgress}
+                            className="w-full flex items-center justify-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                          >
+                            <CheckCircle size={18} />
+                            {permit.is_approver_signature_required ? 'Sign and Approve' : 'Approve'}
+                          </button>
+                          <button
+                            onClick={() => setShowApproverRejectModal(true)}
                             disabled={actionInProgress}
                             className="w-full flex items-center justify-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
                           >
@@ -1346,32 +1916,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                           </button>
                         </>
                       )}
-                      {permit.status === 'Pending Approval' && permit.rejection_notes && isEditMode && (
-                        <>
-                          <button
-                            onClick={handleApproveClick}
-                            disabled={actionInProgress}
-                            className="w-full flex items-center justify-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
-                          >
-                            <CheckCircle size={18} />
-                            {permit.requires_signature ? 'Sign and Approve' : 'Approve'}
-                          </button>
-                          <button
-                            onClick={handleRejectClick}
-                            disabled={actionInProgress}
-                            className="w-full flex items-center justify-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
-                          >
-                            <XCircle size={18} />
-                            Reject
-                          </button>
-                          <button
-                            onClick={() => setIsEditMode(false)}
-                            className="w-full flex items-center justify-center gap-2 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
-                          >
-                            Cancel
-                          </button>
-                        </>
-                      )}
+
                       {permit.status === 'Rejected' && isEditMode && (
                         <>
                           <button
@@ -1391,7 +1936,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                       )}
                     </div>
 
-                    {permit.status === 'Active' && (
+                    {(permit.status === 'Active' || permit.current_stage === 'active') && (
                       <div className="mt-4 pt-4 border-t border-gray-300 space-y-3">
                         <button
                           onClick={() => setShowUploadModal(true)}
@@ -1736,14 +2281,87 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         <PdfSigningModal
           pdfUrl={pdfToSign.url}
           pdfName={pdfToSign.name}
-          signerName={userName || 'System Admin'}
+          signerName={currentApprovalAction === 'qp' ? (permit?.qp_name || userName || 'QP') : (permit?.approver_name || userName || 'Approver')}
           onClose={() => {
             setShowPdfSignModal(false);
             setPdfToSign(null);
             setSignaturePosition(null);
+            setCurrentApprovalAction(null);
           }}
           onApprove={handlePdfSigningApprove}
         />
+      )}
+
+      {showQpRejectModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Reject as QP</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Please provide a reason for rejecting this permit request.
+            </p>
+            <textarea
+              value={qpRejectionNotes}
+              onChange={(e) => setQpRejectionNotes(e.target.value)}
+              rows={4}
+              placeholder="Enter rejection notes..."
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent mb-4"
+            />
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowQpRejectModal(false);
+                  setQpRejectionNotes('');
+                }}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleQpReject}
+                disabled={!qpRejectionNotes.trim() || actionInProgress}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Confirm Rejection
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showApproverRejectModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Reject Permit</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Please provide a reason for rejecting this permit request. The submitter will be notified to make changes and resubmit.
+            </p>
+            <textarea
+              value={approverRejectionNotes}
+              onChange={(e) => setApproverRejectionNotes(e.target.value)}
+              rows={4}
+              placeholder="Enter rejection notes..."
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent mb-4"
+            />
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowApproverRejectModal(false);
+                  setApproverRejectionNotes('');
+                }}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleApproverReject}
+                disabled={!approverRejectionNotes.trim() || actionInProgress}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Confirm Rejection
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {showSuccessToast && (
