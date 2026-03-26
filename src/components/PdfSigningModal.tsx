@@ -15,7 +15,7 @@ interface PdfSigningModalProps {
   pdfUrl: string;
   pdfName: string;
   onClose: () => void;
-  onApprove: (signatures: Array<{ signatureData: string; signerName: string; position: { x: number; y: number }; size: { width: number; height: number }; pdfDimensions: { width: number; height: number } }>) => void;
+  onApprove: (signatures: Array<{ signatureData: string; signerName: string; position: { x: number; y: number }; size: { width: number; height: number }; pdfDimensions: { width: number; height: number }; previewDimensions: { width: number; height: number } }>) => void;
   signerName?: string;
 }
 
@@ -308,6 +308,7 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
       position: sig.position,
       size: sig.size,
       pdfDimensions: pdfDimensions,
+      previewDimensions: previewDimensions,
     }));
 
     onApprove(signatureData);

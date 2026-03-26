@@ -380,6 +380,7 @@ export interface SignatureData {
   position: { x: number; y: number };
   size: { width: number; height: number };
   pdfDimensions: { width: number; height: number };
+  previewDimensions: { width: number; height: number };
 }
 
 export const embedMultipleSignaturesInPDF = async (
@@ -398,10 +399,10 @@ export const embedMultipleSignaturesInPDF = async (
     const signatureImageBytes = await fetch(sig.signatureData).then(res => res.arrayBuffer());
     const signatureImage = await pdfDoc.embedPng(signatureImageBytes);
 
-    const percentX = (sig.position.x / sig.pdfDimensions.width) * 100;
-    const percentY = (sig.position.y / sig.pdfDimensions.height) * 100;
-    const percentWidth = (sig.size.width / sig.pdfDimensions.width) * 100;
-    const percentHeight = (sig.size.height / sig.pdfDimensions.height) * 100;
+    const percentX = (sig.position.x / sig.previewDimensions.width) * 100;
+    const percentY = (sig.position.y / sig.previewDimensions.height) * 100;
+    const percentWidth = (sig.size.width / sig.previewDimensions.width) * 100;
+    const percentHeight = (sig.size.height / sig.previewDimensions.height) * 100;
 
     const pdfX = (percentX / 100) * pageWidth;
     const pdfY = (percentY / 100) * pageHeight;
