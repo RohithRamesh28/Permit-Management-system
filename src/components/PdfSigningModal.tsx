@@ -68,33 +68,50 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
 
   useEffect(() => {
     const renderPdfToCanvas = async () => {
-      if (!pdfCanvasRef.current) return;
+      if (!pdfCanvasRef.current) {
+        console.log('Canvas ref not ready yet');
+        return;
+      }
 
       try {
+        console.log('Starting PDF render...');
         const response = await fetch(pdfUrl);
         const pdfBytes = await response.arrayBuffer();
+        console.log('PDF fetched, bytes:', pdfBytes.byteLength);
 
         const pdfDocPdfLib = await PDFDocument.load(pdfBytes);
         const pages = pdfDocPdfLib.getPages();
         const firstPage = pages[0];
         const { width, height } = firstPage.getSize();
         setPdfDimensions({ width, height });
+        console.log('PDF dimensions:', width, height);
 
         const loadingTask = pdfjsLib.getDocument({ data: pdfBytes });
         const pdfDoc = await loadingTask.promise;
         const page = await pdfDoc.getPage(1);
+        console.log('PDF.js loaded page');
 
         const aspectRatio = width / height;
         const previewHeight = 1100;
         const previewWidth = previewHeight * aspectRatio;
         setPreviewDimensions({ width: previewWidth, height: previewHeight });
+        console.log('Preview dimensions:', previewWidth, previewHeight);
 
         const canvas = pdfCanvasRef.current;
+        if (!canvas) {
+          console.error('Canvas disappeared');
+          return;
+        }
+
         const context = canvas.getContext('2d');
-        if (!context) return;
+        if (!context) {
+          console.error('Could not get 2d context');
+          return;
+        }
 
         const scale = previewHeight / height;
         const viewport = page.getViewport({ scale });
+        console.log('Viewport:', viewport.width, viewport.height);
 
         canvas.width = viewport.width;
         canvas.height = viewport.height;
@@ -104,14 +121,20 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
           viewport: viewport,
         };
 
+        console.log('Starting render to canvas...');
         await page.render(renderContext).promise;
+        console.log('PDF rendered successfully!');
       } catch (error) {
         console.error('Error loading and rendering PDF:', error);
         setPdfDimensions({ width: 612, height: 792 });
       }
     };
 
-    renderPdfToCanvas();
+    const timer = setTimeout(() => {
+      renderPdfToCanvas();
+    }, 100);
+
+    return () => clearTimeout(timer);
   }, [pdfUrl]);
 
   useEffect(() => {
@@ -554,8 +577,13 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
             >
               <canvas
                 ref={pdfCanvasRef}
-                className="absolute top-0 left-0 w-full h-full rounded"
-                style={{ pointerEvents: 'none' }}
+                className="rounded"
+                style={{
+                  pointerEvents: 'none',
+                  width: '100%',
+                  height: '100%',
+                  display: 'block'
+                }}
               />
 
               {cursorPosition && pendingSignatureDataUrl && (
