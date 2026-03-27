@@ -57,7 +57,6 @@ export interface Permit {
   send_to_qp_for_signature?: boolean;
   send_to_approver_for_signature?: boolean;
   requestor_name?: string;
-  requestor_email?: string;
   send_to_qp?: boolean;
   is_qp_signature_required?: boolean;
   is_approver_signature_required?: boolean;

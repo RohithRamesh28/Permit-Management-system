@@ -37,7 +37,7 @@ export function getPermitPermissions(
   const normalizedUserEmail = userEmail.toLowerCase().trim();
   const normalizedQpEmail = permit.qp_email?.toLowerCase().trim();
   const normalizedApproverEmail = permit.approver_email?.toLowerCase().trim();
-  const normalizedRequestorEmail = permit.requestor_email?.toLowerCase().trim();
+  const normalizedRequestorEmail = permit.requester_email?.toLowerCase().trim();
 
   const isQp = normalizedQpEmail === normalizedUserEmail;
   const isApprover = normalizedApproverEmail === normalizedUserEmail;
@@ -99,7 +99,7 @@ export function getPermitPermissions(
       } else {
         return {
           ...defaultPermissions,
-          lockReason: `Only the Requestor (${permit.requestor_name || permit.requestor_email}) can edit and resubmit.`,
+          lockReason: `Only the Requestor (${permit.requestor || permit.requester_email}) can edit and resubmit.`,
         };
       }
 
@@ -153,8 +153,8 @@ export function getCurrentReviewer(permit: Permit | null): { name: string; email
     case 'rejected_by_qp':
     case 'rejected_by_approver':
       return {
-        name: permit.requestor_name || 'Unknown',
-        email: permit.requestor_email || '',
+        name: permit.requestor || 'Unknown',
+        email: permit.requester_email || '',
         role: 'Requestor',
       };
     default:
