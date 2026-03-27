@@ -1018,7 +1018,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                   )}
 
                   <div className="mt-3 pt-3 border-t border-gray-100">
-                    <div className="flex items-start gap-2">
+                    <div className="flex items-center gap-2">
                       <input
                         type="checkbox"
                         id="requiresSignature"
@@ -1030,13 +1030,13 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                             setSendToApproverForSignature(false);
                           }
                         }}
-                        className="w-3.5 h-3.5 mt-0.5 text-[#0072BC] border-gray-300 rounded focus:ring-[#0072BC]"
+                        className="w-3.5 h-3.5 text-[#0072BC] border-gray-300 rounded focus:ring-[#0072BC]"
                       />
                       <div>
-                        <label htmlFor="requiresSignature" className="text-[11px] text-gray-700 cursor-pointer">
+                        <label htmlFor="requiresSignature" className="text-[11px] text-gray-700 cursor-pointer leading-none">
                           Require Signature
                         </label>
-                        <p className="text-[10px] text-gray-500">Enables digital signature functionality.</p>
+                        <p className="text-[10px] text-gray-500 mt-0.5">Enables digital signature functionality.</p>
                       </div>
                     </div>
 
