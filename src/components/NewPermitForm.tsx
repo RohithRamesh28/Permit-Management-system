@@ -794,7 +794,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     loading={statesLoading}
                     disabled={!permitType}
                   />
-                  {statesError && (
+                  {statesError && availableStates.length === 0 && (
                     <p className="text-[10px] text-amber-600 mt-1">{statesError}</p>
                   )}
                 </div>
