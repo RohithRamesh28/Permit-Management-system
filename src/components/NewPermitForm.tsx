@@ -983,7 +983,6 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                 <label className="block text-sm font-semibold text-gray-900 mb-1">
                   Permit Application <span className="text-red-500">*</span>
                 </label>
-                <p className="text-xs text-gray-600 mb-3">Permit Application is primary</p>
                 <label className={`flex items-center gap-2 px-3 py-2.5 border border-dashed rounded cursor-pointer transition-colors ${
                   showDocumentError ? 'border-red-400 bg-red-50' : 'border-gray-300 hover:bg-gray-50'
                 }`}>
