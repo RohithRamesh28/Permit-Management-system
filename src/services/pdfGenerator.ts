@@ -14,6 +14,7 @@ export interface PermitFormData {
   utility_provider?: string;
   state: string;
   permit_jurisdiction?: string;
+  permit_jurisdiction_type?: string;
   county_or_parish?: string;
   city?: string;
   land_owner?: string;
@@ -29,6 +30,12 @@ export interface PermitFormData {
   signerName?: string;
   approvedBy?: string;
   approvedAt?: string;
+  qp_name?: string;
+  qp_email?: string;
+  qp_approved_at?: string;
+  approver_name?: string;
+  approver_email?: string;
+  approver_approved_at?: string;
 }
 
 const ONTIVITY_BLUE = '#0072BC';
@@ -189,12 +196,13 @@ export const generatePermitPDF = (formData: PermitFormData): Blob => {
   tempY3 = addField('Estimated Date of Completion', formData.estimated_date_of_completion, col3X, yPos, col1Width);
   yPos = Math.max(tempY, tempY2, tempY3) + 2;
 
-  tempY = addField('Type of Permit', formData.type_of_permit, margin, yPos, col1Width);
-  if (formData.utility_provider && formData.type_of_permit === 'Electrical') {
-    tempY2 = addField('Utility Provider', formData.utility_provider, col2X, yPos, col1Width);
-    yPos = Math.max(tempY, tempY2) + 2;
+  tempY = addField('Permit Jurisdiction Type', formData.permit_jurisdiction_type || 'State', margin, yPos, col1Width);
+  tempY2 = addField('Type of Permit', formData.type_of_permit, col2X, yPos, col1Width);
+  if (formData.utility_provider && formData.type_of_permit === 'Electrical Permit') {
+    tempY3 = addField('Utility Provider', formData.utility_provider, col3X, yPos, col1Width);
+    yPos = Math.max(tempY, tempY2, tempY3) + 2;
   } else {
-    yPos = tempY + 2;
+    yPos = Math.max(tempY, tempY2) + 2;
   }
 
   tempY = addField('State', formData.state, margin, yPos, col1Width);
@@ -221,79 +229,51 @@ export const generatePermitPDF = (formData: PermitFormData): Blob => {
   yPos = addTextArea('Detailed Scope of Work', formData.detailed_sow, margin, yPos, contentWidth);
   yPos += 4;
 
-  if (formData.requiresSignature && formData.signatureDataUrl) {
-    yPos = addSectionHeader('AUTHORIZATION & SIGNATURE', yPos);
+  if (formData.qp_name || formData.approver_name) {
+    yPos = addSectionHeader('APPROVAL INFORMATION', yPos);
     yPos += 2;
 
-    drawBox(margin, yPos, contentWidth, 35);
+    let approvalInfoHeight = 10;
+    if (formData.qp_name) approvalInfoHeight += 12;
+    if (formData.approver_name) approvalInfoHeight += 12;
 
-    doc.setTextColor(100, 100, 100);
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'bold');
-    doc.text('SIGNATURE:', margin + 2, yPos + 4);
+    drawBox(margin, yPos, contentWidth, approvalInfoHeight);
 
-    doc.setDrawColor(BORDER_GRAY);
-    doc.setLineWidth(0.5);
-    doc.line(margin + 4, yPos + 18, margin + 80, yPos + 18);
+    let lineY = yPos + 6;
 
-    try {
-      doc.addImage(formData.signatureDataUrl, 'PNG', margin + 4, yPos + 6, 60, 12);
-    } catch (error) {
-      console.error('Error adding signature to PDF:', error);
+    if (formData.qp_name) {
+      doc.setTextColor(DARK_GRAY);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Qualified Person (QP):', margin + 2, lineY);
+
+      doc.setFont('helvetica', 'normal');
+      doc.text(formData.qp_name, margin + 40, lineY);
+
+      if (formData.qp_approved_at) {
+        doc.text(`Approved: ${new Date(formData.qp_approved_at).toLocaleDateString()}`, margin + 100, lineY);
+      }
+
+      lineY += 6;
     }
 
-    doc.setTextColor(DARK_GRAY);
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Signed by: ${formData.signerName || formData.requestor}`, margin + 4, yPos + 22);
-    doc.text(new Date().toLocaleDateString(), margin + 4, yPos + 27);
+    if (formData.approver_name) {
+      doc.setTextColor(DARK_GRAY);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Approver:', margin + 2, lineY);
 
-    yPos += 35;
-  } else if (formData.requiresSignature) {
-    yPos = addSectionHeader('AUTHORIZATION & SIGNATURE', yPos);
-    yPos += 2;
+      doc.setFont('helvetica', 'normal');
+      doc.text(formData.approver_name, margin + 40, lineY);
 
-    drawBox(margin, yPos, contentWidth, 25);
+      if (formData.approver_approved_at) {
+        doc.text(`Approved: ${new Date(formData.approver_approved_at).toLocaleDateString()}`, margin + 100, lineY);
+      }
 
-    doc.setTextColor(100, 100, 100);
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'italic');
-    doc.text('Signature Required - Awaiting Authorization', margin + 2, yPos + 8);
-
-    doc.setDrawColor(BORDER_GRAY);
-    doc.setLineWidth(0.5);
-    doc.line(margin + 4, yPos + 18, margin + 80, yPos + 18);
-    doc.text('Authorized Signature', margin + 4, yPos + 22);
-
-    doc.line(margin + 90, yPos + 18, pageWidth - margin - 4, yPos + 18);
-    doc.text('Date', margin + 90, yPos + 22);
-  } else if (formData.status === 'Approved' && !formData.requiresSignature) {
-    yPos = addSectionHeader('APPROVAL STATUS', yPos);
-    yPos += 2;
-
-    const approvalBoxHeight = 25;
-    doc.setFillColor(240, 253, 244);
-    doc.rect(margin, yPos, contentWidth, approvalBoxHeight, 'F');
-    drawBox(margin, yPos, contentWidth, approvalBoxHeight);
-
-    doc.setTextColor('#059669');
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('APPROVED', margin + 2, yPos + 8);
-
-    doc.setTextColor(DARK_GRAY);
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-
-    if (formData.approvedBy) {
-      doc.text(`Approved by: ${formData.approvedBy}`, margin + 2, yPos + 15);
+      lineY += 6;
     }
 
-    if (formData.approvedAt) {
-      doc.text(`Approval Date: ${formData.approvedAt}`, margin + 2, yPos + 21);
-    }
-
-    yPos += approvalBoxHeight;
+    yPos += approvalInfoHeight;
   }
 
   addFooter();

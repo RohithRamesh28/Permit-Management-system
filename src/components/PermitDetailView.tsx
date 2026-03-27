@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { CheckCircle, XCircle, FileText, Clock, Eye, PlusCircle, CreditCard as Edit2, AlertCircle, Download, Upload, User, Lock } from 'lucide-react';
+import { CheckCircle, XCircle, FileText, Clock, Eye, PlusCircle, CreditCard as Edit2, AlertCircle, Upload, User, Lock } from 'lucide-react';
 import { supabase, Permit, PermitDocument, PermitAuditLog } from '../lib/supabase';
 import { SignaturePad, SignaturePadRef } from './SignaturePad';
 import { generatePermitPDF, downloadPDF, mergePDFs, embedMultipleSignaturesInPDF, SignatureData } from '../services/pdfGenerator';
@@ -429,6 +429,8 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         type_of_permit: permit.type_of_permit || '',
         utility_provider: permit.utility_provider || '',
         state: permit.state || '',
+        permit_jurisdiction: permit.permit_jurisdiction || '',
+        permit_jurisdiction_type: permit.permit_jurisdiction_type || '',
         county_or_parish: permit.county_or_parish || '',
         city: permit.city || '',
         land_owner: permit.land_owner || '',
@@ -437,12 +439,16 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         project_value: permit.project_value?.toString() || '0',
         actual_date_of_completion: permit.actual_date_of_completion || '',
         detailed_sow: permit.detailed_sow || '',
-        requiresSignature: permit.requires_signature || false,
-        signatureDataUrl: signatureData,
+        requiresSignature: false,
         status: 'Approved',
-        signerName: approverName,
         approvedBy: approverName,
         approvedAt: new Date().toLocaleDateString(),
+        qp_name: permit.qp_name || '',
+        qp_email: permit.qp_email || '',
+        qp_approved_at: permit.qp_approved_at || '',
+        approver_name: permit.approver_name || '',
+        approver_email: permit.approver_email || '',
+        approver_approved_at: permit.approver_approved_at || '',
       });
 
       const fileName = `permit_${permit.permit_id}_approved_${Date.now()}.pdf`;
@@ -656,6 +662,8 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         type_of_permit: permit.type_of_permit || '',
         utility_provider: permit.utility_provider || '',
         state: permit.state || '',
+        permit_jurisdiction: permit.permit_jurisdiction || '',
+        permit_jurisdiction_type: permit.permit_jurisdiction_type || '',
         county_or_parish: permit.county_or_parish || '',
         city: permit.city || '',
         land_owner: permit.land_owner || '',
@@ -664,12 +672,16 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         project_value: permit.project_value?.toString() || '0',
         actual_date_of_completion: permit.actual_date_of_completion || '',
         detailed_sow: permit.detailed_sow || '',
-        requiresSignature: permit.requires_signature || false,
-        signatureDataUrl: signatureData,
+        requiresSignature: false,
         status: 'Approved',
-        signerName: signatureData ? signerName : undefined,
         approvedBy: approverName,
         approvedAt: approvalDate,
+        qp_name: permit.qp_name || '',
+        qp_email: permit.qp_email || '',
+        qp_approved_at: permit.qp_approved_at || '',
+        approver_name: permit.approver_name || '',
+        approver_email: permit.approver_email || '',
+        approver_approved_at: permit.approver_approved_at || '',
       });
 
       const fileName = `permit_${permit.permit_id}_approved_${Date.now()}.pdf`;
@@ -1104,19 +1116,26 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
       type_of_permit: permit.type_of_permit || '',
       utility_provider: permit.utility_provider || '',
       state: permit.state || '',
+      permit_jurisdiction: permit.permit_jurisdiction || '',
+      permit_jurisdiction_type: permit.permit_jurisdiction_type || '',
       county_or_parish: permit.county_or_parish || '',
       city: permit.city || '',
-      property_owner: permit.property_owner || '',
+      land_owner: permit.land_owner || '',
+      tower_owner: permit.tower_owner || '',
       end_customer: permit.end_customer || '',
       project_value: permit.project_value?.toString() || '0',
       actual_date_of_completion: permit.actual_date_of_completion || '',
       detailed_sow: permit.detailed_sow || '',
-      requiresSignature: permit.requires_signature || false,
-      signatureDataUrl: permit.signature_image_url,
+      requiresSignature: false,
       status: permit.current_stage,
-      signerName: permit.signed_by || undefined,
       approvedBy: permit.current_stage === 'approved' ? (permit.approved_by || permit.signed_by || 'System Admin') : undefined,
       approvedAt: permit.current_stage === 'approved' && permit.signed_at ? formatDate(permit.signed_at) : undefined,
+      qp_name: permit.qp_name || '',
+      qp_email: permit.qp_email || '',
+      qp_approved_at: permit.qp_approved_at || '',
+      approver_name: permit.approver_name || '',
+      approver_email: permit.approver_email || '',
+      approver_approved_at: permit.approver_approved_at || '',
     });
 
     const mergedPdfBlob = await mergePDFs(pdfBlob, permit.signed_document_url);
@@ -1310,13 +1329,6 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
             >
               <PlusCircle size={18} />
               New Form
-            </button>
-            <button
-              onClick={handleDownloadPDF}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-            >
-              <Download size={18} />
-              Download PDF
             </button>
           </div>
         </div>
