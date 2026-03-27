@@ -156,7 +156,7 @@ export default function SearchableDropdown({
           {!loading && filtered.length > 0 && (
             <div className="px-3 py-2 border-t border-gray-100 bg-gray-50">
               <span className="text-xs text-gray-500">
-                {filtered.length} of {options.length} projects
+                {filtered.length} of {options.length}
               </span>
             </div>
           )}
