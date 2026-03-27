@@ -82,6 +82,8 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
   const [editShowDocumentError, setEditShowDocumentError] = useState(false);
   const [editShowSignatureError, setEditShowSignatureError] = useState(false);
   const [editValidationError, setEditValidationError] = useState<string | null>(null);
+  const [showRemoveDocumentModal, setShowRemoveDocumentModal] = useState(false);
+  const [documentToRemove, setDocumentToRemove] = useState<{ url: string; name: string } | null>(null);
 
   const { approvers, loading: loadingApprovers } = useApprovers();
 
@@ -967,6 +969,112 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
   const handleResubmit = async () => {
     if (!permit || !editFormData) return;
 
+    const existingPermitDoc = documents.find(d => d.document_type === 'to_sign');
+    if (!editDocumentToSign && !existingPermitDoc) {
+      setEditValidationError('Permit Application document is required for submission. Please upload before submitting.');
+      setShowResubmitConfirmModal(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if (!editFormData.ontivity_project_number || editFormData.ontivity_project_number.trim() === '') {
+      setEditValidationError('Ontivity Project Number is required. Please select a project.');
+      setShowResubmitConfirmModal(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if (!editFormData.performing_entity || editFormData.performing_entity === '') {
+      setEditValidationError('Performing Entity is required. Please select an entity.');
+      setShowResubmitConfirmModal(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if (!editFormData.date_of_project_commencement || editFormData.date_of_project_commencement === '') {
+      setEditValidationError('Date of Project Commencement is required.');
+      setShowResubmitConfirmModal(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if (!editFormData.estimated_date_of_completion || editFormData.estimated_date_of_completion === '') {
+      setEditValidationError('Estimated Date of Completion is required.');
+      setShowResubmitConfirmModal(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if (!editPermitType) {
+      setEditValidationError('Type of Permit is required. Please select a permit type.');
+      setShowResubmitConfirmModal(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if (editPermitType === 'Electrical' && (!editFormData.utility_provider || editFormData.utility_provider.trim() === '')) {
+      setEditValidationError('Utility Provider is required for Electrical permits.');
+      setShowResubmitConfirmModal(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if (!editSelectedState || editSelectedState === '') {
+      setEditValidationError('State is required. Please select a state.');
+      setShowResubmitConfirmModal(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if (editPermitLevel === 'CountyCity' && (!editSelectedCountyCityTitle || editSelectedCountyCityTitle === '')) {
+      setEditValidationError('County/City is required when permit level is County/City.');
+      setShowResubmitConfirmModal(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if (!editFormData.tower_owner || editFormData.tower_owner.trim() === '') {
+      setEditValidationError('Tower Owner is required.');
+      setShowResubmitConfirmModal(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if (!editFormData.end_customer || editFormData.end_customer.trim() === '') {
+      setEditValidationError('End Customer is required.');
+      setShowResubmitConfirmModal(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if (!editFormData.project_value || parseFloat(editFormData.project_value) <= 0) {
+      setEditValidationError('Project Value is required and must be greater than 0.');
+      setShowResubmitConfirmModal(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if (!editFormData.detailed_sow || editFormData.detailed_sow.trim() === '') {
+      setEditValidationError('Detailed Scope of Work is required.');
+      setShowResubmitConfirmModal(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if (!editFormData.requester_type || editFormData.requester_type === '') {
+      setEditValidationError('Requester Type is required. Please select a requester type.');
+      setShowResubmitConfirmModal(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if (!editApproverName || editApproverName.trim() === '') {
+      setEditValidationError('Approver is required. Please select an approver.');
+      setShowResubmitConfirmModal(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
     if (editSendRequestToQp && !editQpName) {
       setEditValidationError('A Qualified Person is required. Please select a valid state/county or contact admin.');
       setShowResubmitConfirmModal(false);
@@ -1307,7 +1415,23 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
   };
 
   const handleEditRemoveDocumentToSign = () => {
+    const existingDoc = documents.find(d => d.document_type === 'to_sign');
+    const docToRemove = editDocumentToSign
+      ? { url: URL.createObjectURL(editDocumentToSign), name: editDocumentToSign.name }
+      : existingDoc
+        ? { url: existingDoc.file_url, name: existingDoc.file_name }
+        : null;
+
+    if (docToRemove) {
+      setDocumentToRemove(docToRemove);
+      setShowRemoveDocumentModal(true);
+    }
+  };
+
+  const confirmRemoveDocument = () => {
     setEditDocumentToSign(null);
+    setDocumentToRemove(null);
+    setShowRemoveDocumentModal(false);
   };
 
   const handleAdditionalFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -2727,6 +2851,62 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
               >
                 Approve Permit
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showRemoveDocumentModal && documentToRemove && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <AlertCircle className="text-red-600" size={24} />
+              Remove Permit Application Document
+            </h2>
+
+            <div className="mb-4 p-4 bg-amber-50 border border-amber-300 rounded-lg">
+              <p className="text-sm font-semibold text-amber-900 mb-2">⚠️ Important Warning</p>
+              <p className="text-sm text-amber-800 mb-3">
+                This is the PDF permit application document. It may have been signed before removal.
+                View it carefully before removing. Make sure you add a new permit application document
+                because you cannot submit without it.
+              </p>
+              <p className="text-sm text-amber-900 font-medium">
+                Document: {documentToRemove.name}
+              </p>
+            </div>
+
+            <div className="flex justify-between gap-3">
+              <button
+                onClick={() => {
+                  setPreviewDocument({
+                    url: documentToRemove.url,
+                    name: documentToRemove.name,
+                    type: 'application/pdf'
+                  });
+                }}
+                className="px-6 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-2"
+              >
+                <Eye size={18} />
+                View Document
+              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowRemoveDocumentModal(false);
+                    setDocumentToRemove(null);
+                  }}
+                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmRemoveDocument}
+                  className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  Confirm Remove
+                </button>
+              </div>
             </div>
           </div>
         </div>
