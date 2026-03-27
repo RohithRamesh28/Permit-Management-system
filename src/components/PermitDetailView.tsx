@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { CheckCircle, XCircle, FileText, Clock, Eye, PlusCircle, CreditCard as Edit2, AlertCircle, Upload, User, Lock } from 'lucide-react';
+import { CheckCircle, XCircle, FileText, Clock, Eye, PlusCircle, CreditCard as Edit2, AlertCircle, Upload, User, Lock, Loader2 } from 'lucide-react';
 import { supabase, Permit, PermitDocument, PermitAuditLog } from '../lib/supabase';
 import { SignaturePad, SignaturePadRef } from './SignaturePad';
 import { generatePermitPDF, downloadPDF, mergePDFs, embedMultipleSignaturesInPDF, SignatureData } from '../services/pdfGenerator';
@@ -7,10 +7,12 @@ import DocumentPreviewModal from './DocumentPreviewModal';
 import PdfSigningModal from './PdfSigningModal';
 import SearchableDropdown from './SearchableDropdown';
 import { useSharePointJobs } from '../hooks/useSharePointJobs';
-import { US_STATES_AND_TERRITORIES } from '../utils/usStates';
+import { useSharePointJobDetails } from '../hooks/useSharePointJobDetails';
 import DateInput from './DateInput';
 import { useAuth } from '../contexts/AuthContext';
 import { getPermitPermissions, getCurrentReviewer } from '../utils/permitPermissions';
+import { getAvailableStates, getCountyCityOptions, getQPForSelection } from '../services/licensingService';
+import { useApprovers, ApproverInfo } from '../hooks/useApprovers';
 
 interface PermitDetailViewProps {
   permitId: string;
@@ -52,6 +54,37 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
   const [showApproverRejectModal, setShowApproverRejectModal] = useState(false);
   const [approverRejectionNotes, setApproverRejectionNotes] = useState('');
 
+  const [editSelectedJobTitle, setEditSelectedJobTitle] = useState<string | null>(null);
+  const { details: editJobDetails, loading: editJobDetailsLoading } = useSharePointJobDetails(editSelectedJobTitle);
+  const [editPerformingEntityLocked, setEditPerformingEntityLocked] = useState(false);
+  const [editPermitLevel, setEditPermitLevel] = useState<'State' | 'CountyCity'>('State');
+  const [editPermitType, setEditPermitType] = useState<'General' | 'Electrical' | 'Specialty' | null>(null);
+  const [editSelectedState, setEditSelectedState] = useState<string | null>(null);
+  const [editSelectedCountyCityTitle, setEditSelectedCountyCityTitle] = useState<string | null>(null);
+  const [editAvailableStates, setEditAvailableStates] = useState<string[]>([]);
+  const [editAvailableCountyCities, setEditAvailableCountyCities] = useState<Array<{ title: string; qpName: string | null; qpEmail: string | null; spItemId: string | null }>>([]);
+  const [editQpName, setEditQpName] = useState<string | null>(null);
+  const [editQpEmail, setEditQpEmail] = useState<string | null>(null);
+  const [editMatchedItemId, setEditMatchedItemId] = useState<string | null>(null);
+  const [editLicenseListUsed, setEditLicenseListUsed] = useState<string | null>(null);
+  const [editStatesLoading, setEditStatesLoading] = useState(false);
+  const [editCountiesLoading, setEditCountiesLoading] = useState(false);
+  const [editQpLoading, setEditQpLoading] = useState(false);
+  const [editStatesError, setEditStatesError] = useState<string | null>(null);
+  const [editApproverName, setEditApproverName] = useState<string>('');
+  const [editSelectedApprover, setEditSelectedApprover] = useState<ApproverInfo | null>(null);
+  const [editSendRequestToQp, setEditSendRequestToQp] = useState(true);
+  const [editRequiresSignature, setEditRequiresSignature] = useState(false);
+  const [editSendToQpForSignature, setEditSendToQpForSignature] = useState(false);
+  const [editSendToApproverForSignature, setEditSendToApproverForSignature] = useState(false);
+  const [editUploadedFiles, setEditUploadedFiles] = useState<File[]>([]);
+  const [editDocumentToSign, setEditDocumentToSign] = useState<File | null>(null);
+  const [editShowDocumentError, setEditShowDocumentError] = useState(false);
+  const [editShowSignatureError, setEditShowSignatureError] = useState(false);
+  const [editValidationError, setEditValidationError] = useState<string | null>(null);
+
+  const { approvers, loading: loadingApprovers } = useApprovers();
+
   const permissions = getPermitPermissions(permit, userEmail);
   const currentReviewer = getCurrentReviewer(permit);
 
@@ -79,6 +112,44 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         detailed_sow: permit.detailed_sow || '',
         requester_type: permit.requester_type || '',
       });
+
+      const storedLevel = permit.permit_jurisdiction_type === 'County/City' ? 'CountyCity' : 'State';
+      setEditPermitLevel(storedLevel);
+
+      const typeMap: Record<string, 'General' | 'Electrical' | 'Specialty'> = {
+        'General Permit': 'General',
+        'Electrical Permit': 'Electrical',
+        'Specialty/Tower Permit': 'Specialty',
+      };
+      const mappedType = permit.type_of_permit ? (typeMap[permit.type_of_permit] || null) : null;
+      setEditPermitType(mappedType);
+
+      setEditSelectedState(permit.state || null);
+
+      if (storedLevel === 'CountyCity' && permit.permit_jurisdiction && permit.permit_jurisdiction !== permit.state) {
+        const countyPart = permit.permit_jurisdiction.split(',')[0]?.trim() || null;
+        setEditSelectedCountyCityTitle(countyPart);
+      } else {
+        setEditSelectedCountyCityTitle(null);
+      }
+
+      setEditQpName(permit.qp_name || null);
+      setEditQpEmail(permit.qp_email || null);
+      setEditPerformingEntityLocked(true);
+      setEditApproverName(permit.approver_name || '');
+      setEditSelectedApprover(null);
+      setEditSendRequestToQp(permit.send_to_qp ?? true);
+      setEditRequiresSignature(permit.requires_signature ?? false);
+      setEditSendToQpForSignature(permit.is_qp_signature_required ?? false);
+      setEditSendToApproverForSignature(permit.is_approver_signature_required ?? false);
+      setEditUploadedFiles([]);
+      setEditDocumentToSign(null);
+      setEditShowDocumentError(false);
+      setEditShowSignatureError(false);
+      setEditValidationError(null);
+      setEditAvailableStates([]);
+      setEditAvailableCountyCities([]);
+      setEditStatesError(null);
     }
   }, [permit, isEditMode]);
 
@@ -895,25 +966,48 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
 
   const handleResubmit = async () => {
     if (!permit || !editFormData) return;
+
+    if (editSendRequestToQp && !editQpName) {
+      setEditValidationError('A Qualified Person is required. Please select a valid state/county or contact admin.');
+      setShowResubmitConfirmModal(false);
+      return;
+    }
+    if (editRequiresSignature && !editSendToQpForSignature && !editSendToApproverForSignature) {
+      setEditShowSignatureError(true);
+      setShowResubmitConfirmModal(false);
+      return;
+    }
+
     setActionInProgress(true);
     setShowResubmitConfirmModal(false);
 
     try {
-      const newStage = permit.send_to_qp ? 'awaiting_qp' : 'awaiting_approver';
+      const newStage = editSendRequestToQp ? 'awaiting_qp' : 'awaiting_approver';
       const newResubmissionCount = (permit.resubmission_count || 0) + 1;
+
+      const resolvedQpName = editQpName || permit.qp_name || null;
+      const resolvedQpEmail = editQpEmail || permit.qp_email || null;
+      const resolvedApproverName = editApproverName || permit.approver_name || null;
+      const resolvedApproverEmail = editSelectedApprover?.businessEmail || permit.approver_email || null;
+      const resolvedApproverManagerEmail = editSelectedApprover?.managerEmail || permit.approver_manager_email || null;
+      const resolvedApproverDivisionManagerEmail = editSelectedApprover?.divisionManagerEmail || permit.approver_division_manager_email || null;
+
+      const permitJurisdiction = editPermitLevel === 'CountyCity' && editSelectedCountyCityTitle
+        ? `${editSelectedCountyCityTitle}, ${editSelectedState}`
+        : (editSelectedState || editFormData.state);
 
       const updateData: any = {
         current_stage: newStage,
         resubmission_count: newResubmissionCount,
-        permit_jurisdiction_type: editFormData.permit_jurisdiction_type,
+        permit_jurisdiction_type: editPermitLevel === 'State' ? 'State' : 'County/City',
         ontivity_project_number: editFormData.ontivity_project_number,
         performing_entity: editFormData.performing_entity,
         date_of_project_commencement: editFormData.date_of_project_commencement,
         estimated_date_of_completion: editFormData.estimated_date_of_completion,
         type_of_permit: editFormData.type_of_permit,
-        utility_provider: editFormData.type_of_permit === 'Electrical Permit' ? editFormData.utility_provider : null,
-        state: editFormData.state,
-        permit_jurisdiction: editFormData.permit_jurisdiction || editFormData.state,
+        utility_provider: editPermitType === 'Electrical' ? editFormData.utility_provider : null,
+        state: editSelectedState || editFormData.state,
+        permit_jurisdiction: permitJurisdiction,
         land_owner: editFormData.land_owner || null,
         tower_owner: editFormData.tower_owner,
         end_customer: editFormData.end_customer,
@@ -921,6 +1015,18 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         actual_date_of_completion: editFormData.actual_date_of_completion || null,
         detailed_sow: editFormData.detailed_sow,
         requester_type: editFormData.requester_type,
+        qp_name: resolvedQpName,
+        qp_email: resolvedQpEmail,
+        send_to_qp: editSendRequestToQp,
+        approver_name: resolvedApproverName,
+        approver_email: resolvedApproverEmail,
+        approver_manager_email: resolvedApproverManagerEmail,
+        approver_division_manager_email: resolvedApproverDivisionManagerEmail,
+        requires_signature: editRequiresSignature,
+        is_qp_signature_required: editRequiresSignature && editSendToQpForSignature,
+        is_approver_signature_required: editRequiresSignature && editSendToApproverForSignature,
+        send_to_qp_for_signature: editRequiresSignature && editSendToQpForSignature,
+        send_to_approver_for_signature: editRequiresSignature && editSendToApproverForSignature,
         rejection_notes: null,
         qp_approved_at: null,
         qp_approved_by: null,
@@ -932,12 +1038,49 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         approver_rejection_notes: null,
       };
 
+      if (editMatchedItemId) updateData.matched_license_item_id = editMatchedItemId;
+      if (editLicenseListUsed) updateData.license_list_used = editLicenseListUsed;
+
       const { error: updateError } = await supabase
         .from('permits')
         .update(updateData)
         .eq('id', permitId);
 
       if (updateError) throw updateError;
+
+      if (editDocumentToSign) {
+        const filePath = `permit-documents/${permitId}/${Date.now()}_${editDocumentToSign.name}`;
+        const { error: uploadErr } = await supabase.storage
+          .from('permit-pdfs')
+          .upload(filePath, editDocumentToSign, { contentType: 'application/pdf', upsert: false });
+        if (!uploadErr) {
+          const { data: { publicUrl } } = supabase.storage.from('permit-pdfs').getPublicUrl(filePath);
+          await supabase.from('permit_documents').insert({
+            permit_id: permitId,
+            document_type: 'to_sign',
+            file_name: editDocumentToSign.name,
+            file_url: publicUrl,
+          });
+        }
+      }
+
+      if (editUploadedFiles.length > 0) {
+        for (const file of editUploadedFiles) {
+          const filePath = `permit-documents/${permitId}/${Date.now()}_${file.name}`;
+          const { error: uploadErr } = await supabase.storage
+            .from('permit-pdfs')
+            .upload(filePath, file, { cacheControl: '3600', upsert: false });
+          if (!uploadErr) {
+            const { data: { publicUrl } } = supabase.storage.from('permit-pdfs').getPublicUrl(filePath);
+            await supabase.from('permit_documents').insert({
+              permit_id: permitId,
+              document_type: 'general',
+              file_name: file.name,
+              file_url: publicUrl,
+            });
+          }
+        }
+      }
 
       await supabase.from('permit_audit_log').insert([
         {
@@ -964,8 +1107,8 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         estimated_date_of_completion: editFormData.estimated_date_of_completion,
         type_of_permit: editFormData.type_of_permit,
         utility_provider: editFormData.utility_provider || '',
-        state: editFormData.state,
-        permit_jurisdiction: editFormData.permit_jurisdiction || editFormData.state,
+        state: editSelectedState || editFormData.state,
+        permit_jurisdiction: permitJurisdiction,
         land_owner: editFormData.land_owner || '',
         tower_owner: editFormData.tower_owner,
         end_customer: editFormData.end_customer,
@@ -976,13 +1119,13 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         resubmission_count: newResubmissionCount,
         resubmitted_by: permit.requestor,
         resubmitted_at: new Date().toISOString(),
-        send_to_qp: permit.send_to_qp,
-        qp_email: permit.qp_email || '',
-        qp_name: permit.qp_name || '',
-        approver_email: permit.approver_email || '',
-        approver_name: permit.approver_name || '',
-        is_qp_signature_required: permit.is_qp_signature_required,
-        is_approver_signature_required: permit.is_approver_signature_required,
+        send_to_qp: editSendRequestToQp,
+        qp_email: resolvedQpEmail || '',
+        qp_name: resolvedQpName || '',
+        approver_email: resolvedApproverEmail || '',
+        approver_name: resolvedApproverName || '',
+        is_qp_signature_required: editRequiresSignature && editSendToQpForSignature,
+        is_approver_signature_required: editRequiresSignature && editSendToApproverForSignature,
       };
 
       try {
@@ -1011,6 +1154,133 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
     }
   };
 
+  useEffect(() => {
+    if (editJobDetails && isEditMode) {
+      if (editJobDetails.division) {
+        setEditFormData((prev: any) => ({ ...prev, performing_entity: editJobDetails.division }));
+        setEditPerformingEntityLocked(true);
+      } else {
+        if (editPerformingEntityLocked) {
+          setEditFormData((prev: any) => ({ ...prev, performing_entity: '' }));
+          setEditPerformingEntityLocked(false);
+        }
+      }
+      if (editJobDetails.carrier) {
+        setEditFormData((prev: any) => ({ ...prev, end_customer: editJobDetails.carrier }));
+      }
+    }
+  }, [editJobDetails]);
+
+  const editLoadStates = async (level: 'State' | 'CountyCity', type: 'General' | 'Electrical' | 'Specialty', entity: string) => {
+    if (!type || !entity) return;
+    setEditStatesLoading(true);
+    setEditStatesError(null);
+    setEditAvailableStates([]);
+    setEditSelectedState(null);
+    setEditSelectedCountyCityTitle(null);
+    setEditQpName(null);
+    setEditQpEmail(null);
+    const states = await getAvailableStates(level, type, entity);
+    setEditAvailableStates(states);
+    if (states.length === 0) {
+      setEditStatesError('No active licenses found for this combination. Contact admin.');
+    }
+    setEditStatesLoading(false);
+  };
+
+  const editLoadCountyCityOptions = async () => {
+    if (!editSelectedState || !editPermitType || !editFormData?.performing_entity) return;
+    setEditCountiesLoading(true);
+    const options = await getCountyCityOptions(editPermitType, editFormData.performing_entity, editSelectedState);
+    setEditAvailableCountyCities(options);
+    if (options.length === 1) {
+      setEditSelectedCountyCityTitle(options[0].title);
+      setEditQpName(options[0].qpName);
+      setEditQpEmail(options[0].qpEmail);
+      setEditMatchedItemId(options[0].spItemId);
+      const sourceList = editPermitType === 'Electrical' ? 'county_electrical' : 'county_contractor';
+      setEditLicenseListUsed(sourceList);
+    } else if (options.length > 1) {
+      setEditSelectedCountyCityTitle(null);
+      setEditQpName(null);
+      setEditQpEmail(null);
+      setEditMatchedItemId(null);
+      setEditLicenseListUsed(null);
+    }
+    setEditCountiesLoading(false);
+  };
+
+  const editLoadQP = async () => {
+    if (!editPermitType || !editFormData?.performing_entity || !editSelectedState) return;
+    if (editPermitLevel === 'CountyCity' && !editSelectedCountyCityTitle) return;
+    setEditQpLoading(true);
+    const result = await getQPForSelection(
+      editPermitLevel,
+      editPermitType,
+      editFormData.performing_entity,
+      editSelectedState,
+      editPermitLevel === 'CountyCity' ? editSelectedCountyCityTitle! : undefined
+    );
+    setEditQpName(result.qpName);
+    setEditQpEmail(result.qpEmail);
+    setEditMatchedItemId(result.matchedItemId);
+    setEditLicenseListUsed(result.sourceList);
+    setEditQpLoading(false);
+  };
+
+  useEffect(() => {
+    if (isEditMode && editPermitType && editFormData?.performing_entity) {
+      editLoadStates(editPermitLevel, editPermitType, editFormData.performing_entity);
+    }
+  }, [editPermitType, editFormData?.performing_entity, editPermitLevel]);
+
+  useEffect(() => {
+    if (!isEditMode || !editSelectedState) return;
+    if (editPermitLevel === 'CountyCity') {
+      editLoadCountyCityOptions();
+    } else {
+      editLoadQP();
+    }
+  }, [editSelectedState, editPermitLevel]);
+
+  useEffect(() => {
+    if (!isEditMode || !editSelectedCountyCityTitle || editPermitLevel !== 'CountyCity') return;
+    const selected = editAvailableCountyCities.find(opt => opt.title === editSelectedCountyCityTitle);
+    if (selected) {
+      setEditQpName(selected.qpName);
+      setEditQpEmail(selected.qpEmail);
+      setEditMatchedItemId(selected.spItemId);
+      const sourceList = editPermitType === 'Electrical' ? 'county_electrical' : 'county_contractor';
+      setEditLicenseListUsed(sourceList);
+    }
+  }, [editSelectedCountyCityTitle, editAvailableCountyCities]);
+
+  const handleEditPermitLevelChange = (level: 'State' | 'CountyCity') => {
+    setEditPermitLevel(level);
+    setEditPermitType(null);
+    setEditSelectedState(null);
+    setEditSelectedCountyCityTitle(null);
+    setEditAvailableStates([]);
+    setEditAvailableCountyCities([]);
+    setEditQpName(null);
+    setEditQpEmail(null);
+    setEditStatesError(null);
+    setEditFormData((prev: any) => ({ ...prev, permit_jurisdiction_type: level === 'State' ? 'State' : 'County/City', type_of_permit: '', state: '', permit_jurisdiction: '' }));
+  };
+
+  const handleEditPermitTypeChange = (type: 'General' | 'Electrical' | 'Specialty') => {
+    setEditPermitType(type);
+    setEditSelectedState(null);
+    setEditSelectedCountyCityTitle(null);
+    setEditAvailableStates([]);
+    setEditAvailableCountyCities([]);
+    setEditQpName(null);
+    setEditQpEmail(null);
+    setEditStatesError(null);
+    const typeDisplay = type === 'General' ? 'General Permit' : type === 'Electrical' ? 'Electrical Permit' : 'Specialty/Tower Permit';
+    setEditFormData((prev: any) => ({ ...prev, type_of_permit: typeDisplay, state: '', permit_jurisdiction: '' }));
+  };
+
   const handleEditInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setEditFormData((prev: any) => ({ ...prev, [name]: value }));
@@ -1018,6 +1288,26 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
 
   const handleEditDateChange = (name: string, value: string) => {
     setEditFormData((prev: any) => ({ ...prev, [name]: value }));
+  };
+
+  const handleEditFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setEditUploadedFiles(Array.from(e.target.files));
+    }
+  };
+
+  const handleEditRemoveFile = (index: number) => {
+    setEditUploadedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleEditDocumentToSignChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setEditDocumentToSign(e.target.files[0]);
+    }
+  };
+
+  const handleEditRemoveDocumentToSign = () => {
+    setEditDocumentToSign(null);
   };
 
   const handleAdditionalFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1476,17 +1766,29 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                   </>
                 ) : (
                   <>
-                    <div>
-                      <div className="flex items-center mb-6 pb-4 border-b border-gray-200">
-                        <img src="/image_(6).png" alt="Ontivity Logo" className="h-12 w-auto" />
+                    {editValidationError && (
+                      <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+                        <div className="flex-shrink-0 mt-0.5">
+                          <svg className="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="text-sm font-semibold text-red-800 mb-1">Required Field Missing</h3>
+                          <p className="text-sm text-red-700">{editValidationError}</p>
+                        </div>
+                        <button type="button" onClick={() => setEditValidationError(null)} className="flex-shrink-0 text-red-400 hover:text-red-600">
+                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                          </svg>
+                        </button>
                       </div>
+                    )}
 
-                      <h2 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
-                        Project Information
-                      </h2>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="space-y-5">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
                             Requestor <span className="text-red-500">*</span>
                           </label>
                           <input
@@ -1494,12 +1796,12 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                             value={permit.requestor}
                             readOnly
                             disabled
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
                             Requester Type <span className="text-red-500">*</span>
                           </label>
                           <select
@@ -1507,7 +1809,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                             value={editFormData?.requester_type || ''}
                             onChange={handleEditInputChange}
                             required
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
                           >
                             <option value="">Select requester type</option>
                             <option value="Project Manager">Project Manager</option>
@@ -1516,91 +1818,93 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                             <option value="Electronic Manager">Electronic Manager</option>
                           </select>
                         </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Date of Request <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            value={formatDate(permit.date_of_request)}
-                            readOnly
-                            disabled
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
-                          />
-                        </div>
                       </div>
 
-                      <div className="border-t border-gray-200 pt-4 pb-4 mt-6">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Permit Jurisdiction Type <span className="text-red-500">*</span>
+                      <div className="border-t border-gray-200 pt-4 pb-4">
+                        <label className="block text-xs font-medium text-gray-700 mb-2">
+                          Permit Level <span className="text-red-500">*</span>
                         </label>
                         <div className="flex gap-6">
-                          <label className="flex items-center cursor-pointer">
+                          <label className="flex items-center gap-2 cursor-pointer">
                             <input
                               type="radio"
-                              name="permit_jurisdiction_type"
+                              name="editPermitLevel"
                               value="State"
-                              checked={editFormData?.permit_jurisdiction_type === 'State'}
-                              onChange={handleEditInputChange}
+                              checked={editPermitLevel === 'State'}
+                              onChange={() => handleEditPermitLevelChange('State')}
                               className="w-4 h-4 text-[#0072BC] border-gray-300 focus:ring-[#0072BC]"
                             />
-                            <span className="ml-2 text-sm text-gray-700">State Permit</span>
+                            <span className="text-sm font-medium text-gray-700">State</span>
                           </label>
-                          <label className="flex items-center cursor-pointer">
+                          <label className="flex items-center gap-2 cursor-pointer">
                             <input
                               type="radio"
-                              name="permit_jurisdiction_type"
-                              value="County/City"
-                              checked={editFormData?.permit_jurisdiction_type === 'County/City'}
-                              onChange={handleEditInputChange}
+                              name="editPermitLevel"
+                              value="CountyCity"
+                              checked={editPermitLevel === 'CountyCity'}
+                              onChange={() => handleEditPermitLevelChange('CountyCity')}
                               className="w-4 h-4 text-[#0072BC] border-gray-300 focus:ring-[#0072BC]"
                             />
-                            <span className="ml-2 text-sm text-gray-700">County/City Permit</span>
+                            <span className="text-sm font-medium text-gray-700">County / City</span>
                           </label>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
                             Ontivity Project Number <span className="text-red-500">*</span>
                           </label>
                           <SearchableDropdown
                             name="ontivity_project_number"
                             value={editFormData?.ontivity_project_number || ''}
                             onChange={(value) => setEditFormData((prev: any) => ({ ...prev, ontivity_project_number: value }))}
+                            onSelect={(value) => setEditSelectedJobTitle(value)}
                             options={jobs}
                             placeholder="Search projects..."
                             required
                             loading={jobsLoading}
                           />
+                          <p className="text-[10px] text-gray-500 mt-0.5">Values from All Division Jobs</p>
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
                             Performing Entity <span className="text-red-500">*</span>
+                            {editPerformingEntityLocked && <Lock size={12} className="text-gray-500" />}
+                            {editJobDetailsLoading && <Loader2 size={12} className="text-blue-500 animate-spin" />}
                           </label>
-                          <select
-                            name="performing_entity"
-                            value={editFormData?.performing_entity || ''}
-                            onChange={handleEditInputChange}
-                            required
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
-                          >
-                            <option value="">Select entity</option>
-                            <option value="ETT">ETT</option>
-                            <option value="CMS">CMS</option>
-                            <option value="ETR">ETR</option>
-                            <option value="LEG">LEG</option>
-                            <option value="MW">MW</option>
-                            <option value="ONT">ONT</option>
-                          </select>
+                          {editPerformingEntityLocked ? (
+                            <input
+                              type="text"
+                              value={editFormData?.performing_entity || ''}
+                              readOnly
+                              required
+                              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed"
+                            />
+                          ) : (
+                            <select
+                              name="performing_entity"
+                              value={editFormData?.performing_entity || ''}
+                              onChange={handleEditInputChange}
+                              required
+                              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                            >
+                              <option value="">Select entity</option>
+                              <option value="ETT">ETT</option>
+                              <option value="CMS">CMS</option>
+                              <option value="ETR">ETR</option>
+                              <option value="LEG">LEG</option>
+                              <option value="MW">MW</option>
+                              <option value="ONT">ONT</option>
+                            </select>
+                          )}
                         </div>
+                      </div>
 
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
                             Date of Project Commencement <span className="text-red-500">*</span>
                           </label>
                           <DateInput
@@ -1612,7 +1916,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
                             Estimated Date of Completion <span className="text-red-500">*</span>
                           </label>
                           <DateInput
@@ -1622,35 +1926,43 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                             required
                           />
                         </div>
-                      </div>
-                    </div>
 
-                    <div>
-                      <h2 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
-                        Permit Details
-                      </h2>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <div className={`${!editFormData?.performing_entity ? 'opacity-50 pointer-events-none' : ''}`}>
+                          <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
                             Type of Permit <span className="text-red-500">*</span>
+                            {!editFormData?.performing_entity && <Lock size={12} className="text-gray-400" />}
                           </label>
-                          <select
-                            name="type_of_permit"
-                            value={editFormData?.type_of_permit || ''}
-                            onChange={handleEditInputChange}
-                            required
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
-                          >
-                            <option value="">Select type</option>
-                            <option value="Electrical Permit">Electrical Permit</option>
-                            <option value="Specialty/Tower Permit">Specialty/Tower Permit</option>
-                            <option value="General Permit">General Permit</option>
-                          </select>
+                          <div className="grid grid-cols-3 gap-2">
+                            <button
+                              type="button"
+                              disabled={!editFormData?.performing_entity}
+                              onClick={() => handleEditPermitTypeChange('General')}
+                              className={`px-3 py-2 text-xs font-medium rounded-md transition-colors ${editPermitType === 'General' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'}`}
+                            >
+                              General Permit
+                            </button>
+                            <button
+                              type="button"
+                              disabled={!editFormData?.performing_entity}
+                              onClick={() => handleEditPermitTypeChange('Electrical')}
+                              className={`px-3 py-2 text-xs font-medium rounded-md transition-colors ${editPermitType === 'Electrical' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'}`}
+                            >
+                              Electrical Permit
+                            </button>
+                            <button
+                              type="button"
+                              disabled={!editFormData?.performing_entity}
+                              onClick={() => handleEditPermitTypeChange('Specialty')}
+                              className={`px-3 py-2 text-xs font-medium rounded-md transition-colors ${editPermitType === 'Specialty' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'}`}
+                            >
+                              Specialty Permit
+                            </button>
+                          </div>
                         </div>
 
-                        {editFormData?.type_of_permit === 'Electrical Permit' && (
+                        {editPermitType === 'Electrical' && (
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
                               Utility Provider <span className="text-red-500">*</span>
                             </label>
                             <input
@@ -1660,55 +1972,115 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                               onChange={handleEditInputChange}
                               required
                               placeholder="e.g., Pacific Gas & Electric"
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
                             />
                           </div>
                         )}
                       </div>
 
-                      <div className="space-y-4 mt-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              State <span className="text-red-500">*</span>
-                            </label>
-                            <select
-                              name="state"
-                              value={editFormData?.state || ''}
-                              onChange={handleEditInputChange}
-                              required
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
-                            >
-                              <option value="">Select state</option>
-                              {US_STATES_AND_TERRITORIES.map((state) => (
-                                <option key={state.value} value={state.label}>
-                                  {state.label}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-
-                          {editFormData?.permit_jurisdiction_type === 'County/City' && (
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                County / City <span className="text-red-500">*</span>
-                              </label>
-                              <input
-                                type="text"
-                                name="permit_jurisdiction"
-                                value={editFormData?.permit_jurisdiction || ''}
-                                onChange={handleEditInputChange}
-                                required
-                                placeholder="e.g., City of Los Angeles, CA"
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
-                              />
-                            </div>
+                      <div className="space-y-4">
+                        <div className={`${!editPermitType ? 'opacity-50 pointer-events-none' : ''}`}>
+                          <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
+                            State <span className="text-red-500">*</span>
+                            {!editPermitType && <Lock size={12} className="text-gray-400" />}
+                            {editStatesLoading && <Loader2 size={12} className="text-blue-500 animate-spin" />}
+                          </label>
+                          <SearchableDropdown
+                            name="state"
+                            value={editSelectedState || ''}
+                            onChange={(value) => {
+                              setEditSelectedState(value);
+                              setEditFormData((prev: any) => ({ ...prev, state: value }));
+                            }}
+                            options={editAvailableStates.length > 0 ? editAvailableStates : (editSelectedState ? [editSelectedState] : [])}
+                            placeholder="Select state..."
+                            required
+                            loading={editStatesLoading}
+                            disabled={!editPermitType}
+                          />
+                          {editStatesError && editAvailableStates.length === 0 && (
+                            <p className="text-[10px] text-amber-600 mt-1">{editStatesError}</p>
                           )}
                         </div>
 
+                        {editPermitLevel === 'CountyCity' && editSelectedState && (
+                          <div className={`${editCountiesLoading ? 'opacity-50' : ''}`}>
+                            <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
+                              County / City <span className="text-red-500">*</span>
+                              {editCountiesLoading && <Loader2 size={12} className="text-blue-500 animate-spin" />}
+                            </label>
+                            <SearchableDropdown
+                              name="county_city"
+                              value={editSelectedCountyCityTitle || ''}
+                              onChange={(value) => setEditSelectedCountyCityTitle(value)}
+                              options={editAvailableCountyCities.map(opt => opt.title)}
+                              placeholder="Select county/city..."
+                              required
+                              loading={editCountiesLoading}
+                            />
+                          </div>
+                        )}
+
+                        {editSelectedState && (editPermitLevel === 'State' || (editPermitLevel === 'CountyCity' && editSelectedCountyCityTitle)) && (
+                          <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
+                                  QP Name
+                                  {editQpLoading && <Loader2 size={12} className="text-blue-500 animate-spin" />}
+                                </label>
+                                <input
+                                  type="text"
+                                  value={editQpName || (editQpLoading ? 'Loading...' : '')}
+                                  readOnly
+                                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white text-gray-600 cursor-not-allowed"
+                                />
+                                {!editQpName && !editQpLoading && (
+                                  <p className="text-[10px] text-amber-600 mt-1">QP unavailable — contact admin</p>
+                                )}
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">
+                                  Approver <span className="text-red-500">*</span>
+                                </label>
+                                <SearchableDropdown
+                                  name="approverName"
+                                  options={approvers.map((a) => a.fullName)}
+                                  value={editApproverName}
+                                  onChange={(val) => {
+                                    setEditApproverName(val);
+                                    const approver = approvers.find((a) => a.fullName === val);
+                                    setEditSelectedApprover(approver || null);
+                                  }}
+                                  placeholder="Search for an approver..."
+                                  required
+                                  loading={loadingApprovers}
+                                />
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-300">
+                              <div>
+                                <span className="text-xs font-medium text-gray-700">Send request to QP</span>
+                                <p className="text-[10px] text-gray-500">Notify the Qualified Person about this permit request</p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newValue = !editSendRequestToQp;
+                                  setEditSendRequestToQp(newValue);
+                                  if (!newValue) setEditSendToQpForSignature(false);
+                                }}
+                                className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#0072BC] focus:ring-offset-1 ${editSendRequestToQp ? 'bg-[#0072BC]' : 'bg-gray-300'}`}
+                              >
+                                <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${editSendRequestToQp ? 'translate-x-4' : 'translate-x-0'}`} />
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
                               Land Owner (if applicable)
                             </label>
                             <input
@@ -1717,12 +2089,12 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                               value={editFormData?.land_owner || ''}
                               onChange={handleEditInputChange}
                               placeholder="e.g., SBA, CCI, ATC"
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
                             />
                           </div>
 
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
                               Tower Owner <span className="text-red-500">*</span>
                             </label>
                             <input
@@ -1732,13 +2104,14 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                               onChange={handleEditInputChange}
                               required
                               placeholder="e.g., American Tower"
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
                             />
                           </div>
 
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
                               End Customer <span className="text-red-500">*</span>
+                              {editJobDetailsLoading && <Loader2 size={12} className="text-blue-500 animate-spin" />}
                             </label>
                             <input
                               type="text"
@@ -1747,16 +2120,16 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                               onChange={handleEditInputChange}
                               required
                               placeholder="Customer name"
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
                             />
                           </div>
 
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
                               Project Value <span className="text-red-500">*</span>
                             </label>
                             <div className="relative">
-                              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                              <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">$</span>
                               <input
                                 type="number"
                                 name="project_value"
@@ -1765,7 +2138,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                                 required
                                 placeholder="0.00"
                                 step="0.01"
-                                className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                                className="w-full pl-6 pr-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
                               />
                             </div>
                           </div>
@@ -1773,7 +2146,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Actual Date of Project Completion</label>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Actual Date of Project Completion</label>
                             <DateInput
                               name="actual_date_of_completion"
                               value={editFormData?.actual_date_of_completion || ''}
@@ -1783,19 +2156,158 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                         </div>
                       </div>
 
-                      <div className="mt-6">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Detailed Scope of Work <span className="text-red-500">*</span>
-                        </label>
-                        <textarea
-                          name="detailed_sow"
-                          value={editFormData?.detailed_sow || ''}
-                          onChange={handleEditInputChange}
-                          required
-                          rows={6}
-                          placeholder="Provide detailed description of the work to be performed..."
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
-                        />
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="md:col-span-3">
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                            Detailed Scope of Work <span className="text-red-500">*</span>
+                          </label>
+                          <textarea
+                            name="detailed_sow"
+                            value={editFormData?.detailed_sow || ''}
+                            onChange={handleEditInputChange}
+                            required
+                            rows={4}
+                            placeholder="Provide detailed description of the work to be performed..."
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="border border-gray-200 rounded-md p-5 bg-gray-50">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className={`${editShowDocumentError ? 'ring-2 ring-red-500' : ''} bg-white rounded-md p-4`}>
+                            <label className="block text-sm font-semibold text-gray-900 mb-1">
+                              Permit Application <span className="text-red-500">*</span>
+                            </label>
+                            <label className={`flex items-center gap-2 px-3 py-2.5 border border-dashed rounded cursor-pointer transition-colors ${editShowDocumentError ? 'border-red-400 bg-red-50' : 'border-gray-300 hover:bg-gray-50'}`}>
+                              <Upload size={16} className={editShowDocumentError ? 'text-red-500' : 'text-gray-400'} />
+                              <span className={`text-xs ${editShowDocumentError ? 'text-red-600' : 'text-gray-600'}`}>
+                                {editDocumentToSign ? editDocumentToSign.name : 'Upload PDF'}
+                              </span>
+                              <input
+                                type="file"
+                                accept=".pdf"
+                                onChange={(e) => {
+                                  handleEditDocumentToSignChange(e);
+                                  setEditShowDocumentError(false);
+                                }}
+                                className="hidden"
+                              />
+                            </label>
+                            {editShowDocumentError && !editDocumentToSign && (
+                              <p className="text-[10px] text-red-600 mt-1">Required field</p>
+                            )}
+                            {editDocumentToSign && (
+                              <div className="flex items-center justify-between mt-2 text-[10px] text-gray-600">
+                                <span>{(editDocumentToSign.size / 1024).toFixed(1)} KB</span>
+                                <button type="button" onClick={handleEditRemoveDocumentToSign} className="text-red-600 hover:text-red-800 font-medium">Remove</button>
+                              </div>
+                            )}
+
+                            <div className="mt-3 pt-3 border-t border-gray-100">
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  id="editRequiresSignature"
+                                  checked={editRequiresSignature}
+                                  onChange={(e) => {
+                                    setEditRequiresSignature(e.target.checked);
+                                    if (!e.target.checked) {
+                                      setEditSendToQpForSignature(false);
+                                      setEditSendToApproverForSignature(false);
+                                    }
+                                  }}
+                                  className="w-3.5 h-3.5 text-[#0072BC] border-gray-300 rounded focus:ring-[#0072BC]"
+                                />
+                                <div>
+                                  <label htmlFor="editRequiresSignature" className="text-[11px] text-gray-700 cursor-pointer leading-none">
+                                    Require Signature
+                                  </label>
+                                  <p className="text-[10px] text-gray-500 mt-0.5">Enables digital signature functionality.</p>
+                                </div>
+                              </div>
+
+                              {editRequiresSignature && (
+                                <div className={`mt-2 ml-5 space-y-1.5 ${editShowSignatureError ? 'text-red-700' : ''}`}>
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      type="checkbox"
+                                      id="editSendToQpForSignature"
+                                      checked={editSendToQpForSignature}
+                                      disabled={!editSendRequestToQp}
+                                      onChange={(e) => {
+                                        setEditSendToQpForSignature(e.target.checked);
+                                        setEditShowSignatureError(false);
+                                      }}
+                                      className={`w-3 h-3 text-[#0072BC] border-gray-300 rounded focus:ring-[#0072BC] ${!editSendRequestToQp ? 'opacity-40 cursor-not-allowed' : ''}`}
+                                    />
+                                    <label htmlFor="editSendToQpForSignature" className={`text-[10px] cursor-pointer ${!editSendRequestToQp ? 'text-gray-400' : 'text-gray-600'}`}>
+                                      Qualified Person
+                                    </label>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      type="checkbox"
+                                      id="editSendToApproverForSignature"
+                                      checked={editSendToApproverForSignature}
+                                      onChange={(e) => {
+                                        setEditSendToApproverForSignature(e.target.checked);
+                                        setEditShowSignatureError(false);
+                                      }}
+                                      className="w-3 h-3 text-[#0072BC] border-gray-300 rounded focus:ring-[#0072BC]"
+                                    />
+                                    <label htmlFor="editSendToApproverForSignature" className="text-[10px] text-gray-600 cursor-pointer">
+                                      Approver
+                                    </label>
+                                  </div>
+                                  {editShowSignatureError && (
+                                    <p className="text-[9px] text-red-600">Select at least one recipient</p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="bg-white rounded-md p-4">
+                            <label className="block text-sm font-semibold text-gray-900 mb-1">
+                              General Documents
+                            </label>
+                            <label className="flex items-center gap-2 px-3 py-2.5 border border-dashed border-gray-300 rounded cursor-pointer hover:bg-gray-50 transition-colors">
+                              <Upload size={16} className="text-gray-400" />
+                              <span className="text-xs text-gray-600">
+                                {editUploadedFiles.length > 0 ? `${editUploadedFiles.length} file(s)` : 'Upload files'}
+                              </span>
+                              <input
+                                type="file"
+                                accept="image/*,.pdf"
+                                multiple
+                                onChange={handleEditFileChange}
+                                className="hidden"
+                              />
+                            </label>
+                            {editUploadedFiles.length > 0 && (
+                              <div className="mt-3 space-y-1.5">
+                                {editUploadedFiles.map((file, index) => (
+                                  <div key={index} className="flex items-center justify-between text-[10px] text-gray-600">
+                                    <span className="truncate flex-1">{file.name}</span>
+                                    <button type="button" onClick={() => handleEditRemoveFile(index)} className="text-red-600 hover:text-red-800 font-medium ml-2">Remove</button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            <div className="mt-3 pt-3 border-t border-gray-100">
+                              <p className="text-[10px] font-medium text-gray-700 mb-1">Required for permit compliance:</p>
+                              <ul className="text-[9px] text-gray-500 space-y-0.5 list-disc list-inside">
+                                <li>Pre photos of area that work is being performed</li>
+                                <li>Photos of identification signs at entrance</li>
+                                <li>Photos of work in progress</li>
+                                <li>Photos of work area upon completion</li>
+                                <li>Photo of permit and passed inspection</li>
+                              </ul>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </>
