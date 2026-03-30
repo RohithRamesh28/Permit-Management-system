@@ -389,12 +389,15 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
         }
       }
 
+      let originalDocumentUrl: string | null = null;
+
       if (documentToSign) {
-        const filePath = `permit-documents/${permitData.id}/${documentToSign.name}`;
+        const workingFilePath = `permit-documents/${permitData.id}/${documentToSign.name}`;
+        const originalFilePath = `permit-documents/${permitData.id}/originals/${documentToSign.name}`;
 
         const { error: uploadError } = await supabase.storage
           .from('permit-pdfs')
-          .upload(filePath, documentToSign, {
+          .upload(workingFilePath, documentToSign, {
             cacheControl: '3600',
             upsert: true,
           });
@@ -404,9 +407,26 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
           throw new Error('Failed to upload permit application document');
         }
 
+        const { error: originalUploadError } = await supabase.storage
+          .from('permit-pdfs')
+          .upload(originalFilePath, documentToSign, {
+            cacheControl: '3600',
+            upsert: true,
+          });
+
+        if (originalUploadError) {
+          console.error('Error uploading original backup:', originalUploadError);
+        }
+
         const { data: urlData } = supabase.storage
           .from('permit-pdfs')
-          .getPublicUrl(filePath);
+          .getPublicUrl(workingFilePath);
+
+        const { data: originalUrlData } = supabase.storage
+          .from('permit-pdfs')
+          .getPublicUrl(originalFilePath);
+
+        originalDocumentUrl = originalUrlData.publicUrl;
 
         fileUrls.push({
           name: documentToSign.name,
@@ -424,6 +444,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
           file_name: fileInfo.name,
           file_url: fileInfo.url,
           uploaded_after_approval: false,
+          original_document_url: fileInfo.documentType === 'to_sign' ? originalDocumentUrl : null,
         }));
 
         const { error: docError } = await supabase.from('permit_documents').insert(documentInserts);

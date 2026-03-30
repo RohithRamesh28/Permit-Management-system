@@ -13,6 +13,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getPermitPermissions, getCurrentReviewer } from '../utils/permitPermissions';
 import { getAvailableStates, getCountyCityOptions, getQPForSelection } from '../services/licensingService';
 import { useApprovers, ApproverInfo } from '../hooks/useApprovers';
+import { restoreOriginalDocument, clearPermitSignatures, deleteOldOriginalAndUploadNew } from '../services/documentService';
 
 interface PermitDetailViewProps {
   permitId: string;
@@ -286,6 +287,13 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
           })
           .eq('id', permitId);
 
+        if (documentToSign) {
+          await supabase
+            .from('permit_documents')
+            .update({ file_url: publicUrl })
+            .eq('id', documentToSign.id);
+        }
+
         setPdfToSign(null);
 
         if (currentApprovalAction === 'qp') {
@@ -407,6 +415,11 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
     try {
       const qpName = permit.qp_name || userName || 'QP';
 
+      const restoreResult = await restoreOriginalDocument(permitId);
+      if (!restoreResult.success) {
+        console.error('Failed to restore original document:', restoreResult.error);
+      }
+
       const { error: updateError } = await supabase
         .from('permits')
         .update({
@@ -415,6 +428,14 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
           qp_rejected_by: qpName,
           qp_rejection_notes: qpRejectionNotes,
           rejection_notes: `Rejected by QP: ${qpRejectionNotes}`,
+          signed_document_url: null,
+          signed_pdf_url: null,
+          signature_data_url: null,
+          signature_image_url: null,
+          signed_by: null,
+          signed_at: null,
+          qp_approved_at: null,
+          qp_approved_by: null,
         })
         .eq('id', permitId);
 
@@ -425,7 +446,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
           permit_id: permitId,
           action: 'QP Rejected',
           performed_by: qpName,
-          notes: qpRejectionNotes,
+          notes: `${qpRejectionNotes}. Original document restored.`,
         },
       ]);
 
@@ -459,7 +480,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
       setQpRejectionNotes('');
       await fetchPermitDetails();
 
-      setSuccessMessage('Permit rejected by QP');
+      setSuccessMessage('Permit rejected by QP. Original document restored.');
       setShowSuccessToast(true);
       setTimeout(() => setShowSuccessToast(false), 3000);
     } catch (error) {
@@ -629,6 +650,11 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
       const approverName = permit.approver_name || userName || 'Approver';
       const newStage = permit.send_to_qp ? 'awaiting_qp' : 'awaiting_approver';
 
+      const restoreResult = await restoreOriginalDocument(permitId);
+      if (!restoreResult.success) {
+        console.error('Failed to restore original document:', restoreResult.error);
+      }
+
       const { error: updateError } = await supabase
         .from('permits')
         .update({
@@ -636,8 +662,16 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
           approver_rejected_at: new Date().toISOString(),
           approver_rejection_notes: approverRejectionNotes,
           rejection_notes: `Rejected by Approver: ${approverRejectionNotes}`,
+          signed_document_url: null,
+          signed_pdf_url: null,
+          signature_data_url: null,
+          signature_image_url: null,
+          signed_by: null,
+          signed_at: null,
           qp_approved_at: null,
           qp_approved_by: null,
+          approver_approved_at: null,
+          approved_by: null,
         })
         .eq('id', permitId);
 
@@ -648,7 +682,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
           permit_id: permitId,
           action: 'Approver Rejected',
           performed_by: approverName,
-          notes: approverRejectionNotes,
+          notes: `${approverRejectionNotes}. Original document restored. All signatures cleared.`,
         },
       ]);
 
@@ -691,7 +725,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
       setApproverRejectionNotes('');
       await fetchPermitDetails();
 
-      setSuccessMessage('Permit rejected by Approver');
+      setSuccessMessage('Permit rejected by Approver. Original document restored.');
       setShowSuccessToast(true);
       setTimeout(() => setShowSuccessToast(false), 3000);
     } catch (error) {
@@ -1157,18 +1191,9 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
       if (updateError) throw updateError;
 
       if (editDocumentToSign) {
-        const filePath = `permit-documents/${permitId}/${Date.now()}_${editDocumentToSign.name}`;
-        const { error: uploadErr } = await supabase.storage
-          .from('permit-pdfs')
-          .upload(filePath, editDocumentToSign, { contentType: 'application/pdf', upsert: false });
-        if (!uploadErr) {
-          const { data: { publicUrl } } = supabase.storage.from('permit-pdfs').getPublicUrl(filePath);
-          await supabase.from('permit_documents').insert({
-            permit_id: permitId,
-            document_type: 'to_sign',
-            file_name: editDocumentToSign.name,
-            file_url: publicUrl,
-          });
+        const uploadResult = await deleteOldOriginalAndUploadNew(permitId, editDocumentToSign);
+        if (!uploadResult) {
+          console.error('Failed to upload new document');
         }
       }
 

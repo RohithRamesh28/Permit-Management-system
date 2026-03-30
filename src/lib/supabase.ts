@@ -82,6 +82,7 @@ export interface PermitDocument {
   file_url: string;
   uploaded_at: string;
   uploaded_after_approval?: boolean;
+  original_document_url?: string;
 }
 
 export interface PermitAuditLog {
