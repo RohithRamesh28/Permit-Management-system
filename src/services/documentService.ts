@@ -87,30 +87,32 @@ export const deleteOldOriginalAndUploadNew = async (
   newFile: File
 ): Promise<{ workingUrl: string; originalUrl: string } | null> => {
   try {
-    const { data: existingDoc, error: fetchError } = await supabase
+    const { data: existingDocs, error: fetchError } = await supabase
       .from('permit_documents')
       .select('id, file_url, original_document_url')
       .eq('permit_id', permitId)
-      .eq('document_type', 'to_sign')
-      .maybeSingle();
+      .eq('document_type', 'to_sign');
 
     if (fetchError) {
-      console.error('Error fetching existing document:', fetchError);
+      console.error('Error fetching existing documents:', fetchError);
       return null;
     }
 
-    if (existingDoc) {
+    if (existingDocs && existingDocs.length > 0) {
       const pathsToDelete: string[] = [];
 
-      if (existingDoc.file_url) {
-        const currentPath = extractStoragePath(existingDoc.file_url);
-        if (currentPath) pathsToDelete.push(currentPath);
-      }
-
-      if (existingDoc.original_document_url) {
-        const originalPath = extractStoragePath(existingDoc.original_document_url);
-        if (originalPath && !pathsToDelete.includes(originalPath)) {
-          pathsToDelete.push(originalPath);
+      for (const doc of existingDocs) {
+        if (doc.file_url) {
+          const currentPath = extractStoragePath(doc.file_url);
+          if (currentPath && !pathsToDelete.includes(currentPath)) {
+            pathsToDelete.push(currentPath);
+          }
+        }
+        if (doc.original_document_url) {
+          const originalPath = extractStoragePath(doc.original_document_url);
+          if (originalPath && !pathsToDelete.includes(originalPath)) {
+            pathsToDelete.push(originalPath);
+          }
         }
       }
 
@@ -121,7 +123,8 @@ export const deleteOldOriginalAndUploadNew = async (
       await supabase
         .from('permit_documents')
         .delete()
-        .eq('id', existingDoc.id);
+        .eq('permit_id', permitId)
+        .eq('document_type', 'to_sign');
     }
 
     const timestamp = Date.now();
