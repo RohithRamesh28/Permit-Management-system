@@ -87,14 +87,18 @@ export const deleteOldOriginalAndUploadNew = async (
   newFile: File
 ): Promise<{ workingUrl: string; originalUrl: string } | null> => {
   try {
+    console.log('[deleteOldOriginalAndUploadNew] Starting for permit:', permitId, 'file:', newFile.name);
+
     const { data: existingDocs, error: fetchError } = await supabase
       .from('permit_documents')
       .select('id, file_url, original_document_url')
       .eq('permit_id', permitId)
       .eq('document_type', 'to_sign');
 
+    console.log('[deleteOldOriginalAndUploadNew] Found existing docs:', existingDocs?.length || 0, existingDocs);
+
     if (fetchError) {
-      console.error('Error fetching existing documents:', fetchError);
+      console.error('[deleteOldOriginalAndUploadNew] Error fetching existing documents:', fetchError);
       return null;
     }
 
@@ -116,15 +120,27 @@ export const deleteOldOriginalAndUploadNew = async (
         }
       }
 
+      console.log('[deleteOldOriginalAndUploadNew] Deleting storage paths:', pathsToDelete);
+
       if (pathsToDelete.length > 0) {
-        await supabase.storage.from('permit-pdfs').remove(pathsToDelete);
+        const { error: storageDeleteError } = await supabase.storage.from('permit-pdfs').remove(pathsToDelete);
+        if (storageDeleteError) {
+          console.error('[deleteOldOriginalAndUploadNew] Storage delete error:', storageDeleteError);
+        }
       }
 
-      await supabase
+      console.log('[deleteOldOriginalAndUploadNew] Deleting DB records for permit:', permitId);
+      const { error: deleteError } = await supabase
         .from('permit_documents')
         .delete()
         .eq('permit_id', permitId)
         .eq('document_type', 'to_sign');
+
+      if (deleteError) {
+        console.error('[deleteOldOriginalAndUploadNew] DB delete error:', deleteError);
+      } else {
+        console.log('[deleteOldOriginalAndUploadNew] DB records deleted successfully');
+      }
     }
 
     const timestamp = Date.now();
@@ -162,6 +178,7 @@ export const deleteOldOriginalAndUploadNew = async (
       .from('permit-pdfs')
       .getPublicUrl(originalFilePath);
 
+    console.log('[deleteOldOriginalAndUploadNew] Inserting new document record:', workingUrlData.publicUrl);
     const { error: insertError } = await supabase
       .from('permit_documents')
       .insert({
@@ -174,10 +191,11 @@ export const deleteOldOriginalAndUploadNew = async (
       });
 
     if (insertError) {
-      console.error('Error inserting new document record:', insertError);
+      console.error('[deleteOldOriginalAndUploadNew] Error inserting new document record:', insertError);
       return null;
     }
 
+    console.log('[deleteOldOriginalAndUploadNew] Success! New document URL:', workingUrlData.publicUrl);
     return {
       workingUrl: workingUrlData.publicUrl,
       originalUrl: originalUrlData.publicUrl,
