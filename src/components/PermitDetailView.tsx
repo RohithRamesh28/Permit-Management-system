@@ -173,7 +173,8 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
       const { data: docsData, error: docsError } = await supabase
         .from('permit_documents')
         .select('*')
-        .eq('permit_id', permitId);
+        .eq('permit_id', permitId)
+        .order('uploaded_at', { ascending: false });
 
       if (docsError) throw docsError;
       setDocuments(docsData || []);
@@ -194,11 +195,22 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
   };
 
 
+  const getMostRecentToSignDocument = () => {
+    const toSignDocs = documents.filter(doc => doc.document_type === 'to_sign');
+    if (toSignDocs.length === 0) return null;
+    return toSignDocs.reduce((mostRecent, doc) => {
+      if (!mostRecent) return doc;
+      const mostRecentDate = new Date(mostRecent.uploaded_at || 0);
+      const docDate = new Date(doc.uploaded_at || 0);
+      return docDate > mostRecentDate ? doc : mostRecent;
+    }, toSignDocs[0]);
+  };
+
   const getDocumentToSignUrl = () => {
     if (permit?.signed_document_url) {
       return permit.signed_document_url;
     }
-    const documentToSign = documents.find(doc => doc.document_type === 'to_sign');
+    const documentToSign = getMostRecentToSignDocument();
     return documentToSign?.file_url || null;
   };
 
@@ -209,7 +221,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
     }
     setCurrentApprovalAction('qp');
     const docUrl = getDocumentToSignUrl();
-    const documentToSign = documents.find(doc => doc.document_type === 'to_sign');
+    const documentToSign = getMostRecentToSignDocument();
 
     if (permit?.is_qp_signature_required && docUrl) {
       setPdfToSign({ url: docUrl, name: documentToSign?.file_name || 'Permit Application' });
@@ -226,7 +238,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
     }
     setCurrentApprovalAction('approver');
     const docUrl = getDocumentToSignUrl();
-    const documentToSign = documents.find(doc => doc.document_type === 'to_sign');
+    const documentToSign = getMostRecentToSignDocument();
 
     if (permit?.is_approver_signature_required && docUrl) {
       setPdfToSign({ url: docUrl, name: documentToSign?.file_name || 'Permit Application' });
@@ -237,7 +249,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
   };
 
   const handleApproveClick = () => {
-    const documentToSign = documents.find(doc => doc.document_type === 'to_sign');
+    const documentToSign = getMostRecentToSignDocument();
 
     if (documentToSign && !permit?.signature_image_url) {
       setPdfToSign({ url: documentToSign.file_url, name: documentToSign.file_name });
@@ -259,7 +271,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
     setShowPdfSignModal(false);
 
     const docUrl = getDocumentToSignUrl();
-    const documentToSign = documents.find(doc => doc.document_type === 'to_sign');
+    const documentToSign = getMostRecentToSignDocument();
 
     if (docUrl) {
       try {
@@ -1191,6 +1203,8 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         updateData.signed_pdf_url = null;
         updateData.signature_data_url = null;
         updateData.signature_image_url = null;
+        updateData.signed_by = null;
+        updateData.signed_at = null;
       }
 
       const { error: updateError } = await supabase
@@ -2345,7 +2359,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                               Permit Application <span className="text-red-500">*</span>
                             </label>
                             {(() => {
-                              const existingDoc = documents.find(doc => doc.document_type === 'to_sign');
+                              const existingDoc = getMostRecentToSignDocument();
                               const docUrl = permit?.original_document_url || existingDoc?.file_url;
                               const docName = existingDoc?.file_name || 'Permit Application';
 
@@ -2425,7 +2439,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                                 </label>
                               );
                             })()}
-                            {editShowDocumentError && !editDocumentToSign && !documents.find(doc => doc.document_type === 'to_sign') && (
+                            {editShowDocumentError && !editDocumentToSign && !getMostRecentToSignDocument() && (
                               <p className="text-[10px] text-red-600 mt-1">Required field</p>
                             )}
 
@@ -2544,7 +2558,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                   <div className="mb-6">
                     <h3 className="text-sm font-semibold text-gray-700 mb-3">Permit Application</h3>
                     {(() => {
-                      const permitDoc = documents.find(doc => doc.document_type === 'to_sign');
+                      const permitDoc = getMostRecentToSignDocument();
                       const isSigned = !!permit.signed_document_url;
                       const docUrl = isSigned ? permit.signed_document_url! : permitDoc?.file_url;
                       const docName = permitDoc?.file_name || 'Permit Application';
@@ -3028,7 +3042,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
             </div>
 
             {(() => {
-              const existingDoc = documents.find(doc => doc.document_type === 'to_sign');
+              const existingDoc = getMostRecentToSignDocument();
               const docUrl = permit?.original_document_url || existingDoc?.file_url;
               const docName = existingDoc?.file_name || 'Permit Application';
 

@@ -104,6 +104,7 @@ export const deleteOldOriginalAndUploadNew = async (
 
     if (existingDocs && existingDocs.length > 0) {
       const pathsToDelete: string[] = [];
+      const docIdsToDelete: string[] = existingDocs.map(doc => doc.id);
 
       for (const doc of existingDocs) {
         if (doc.file_url) {
@@ -129,17 +130,30 @@ export const deleteOldOriginalAndUploadNew = async (
         }
       }
 
-      console.log('[deleteOldOriginalAndUploadNew] Deleting DB records for permit:', permitId);
-      const { error: deleteError } = await supabase
+      console.log('[deleteOldOriginalAndUploadNew] Deleting DB records by ID:', docIdsToDelete);
+      for (const docId of docIdsToDelete) {
+        const { error: deleteError } = await supabase
+          .from('permit_documents')
+          .delete()
+          .eq('id', docId);
+
+        if (deleteError) {
+          console.error('[deleteOldOriginalAndUploadNew] DB delete error for id', docId, ':', deleteError);
+        } else {
+          console.log('[deleteOldOriginalAndUploadNew] Deleted document:', docId);
+        }
+      }
+
+      const { data: remainingDocs } = await supabase
         .from('permit_documents')
-        .delete()
+        .select('id')
         .eq('permit_id', permitId)
         .eq('document_type', 'to_sign');
 
-      if (deleteError) {
-        console.error('[deleteOldOriginalAndUploadNew] DB delete error:', deleteError);
+      if (remainingDocs && remainingDocs.length > 0) {
+        console.warn('[deleteOldOriginalAndUploadNew] Warning: Some documents were not deleted. Remaining:', remainingDocs.length);
       } else {
-        console.log('[deleteOldOriginalAndUploadNew] DB records deleted successfully');
+        console.log('[deleteOldOriginalAndUploadNew] All old to_sign documents deleted successfully');
       }
     }
 
