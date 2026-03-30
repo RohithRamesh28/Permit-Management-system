@@ -1186,6 +1186,13 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
       if (editMatchedItemId) updateData.matched_license_item_id = editMatchedItemId;
       if (editLicenseListUsed) updateData.license_list_used = editLicenseListUsed;
 
+      if (editDocumentToSign) {
+        updateData.signed_document_url = null;
+        updateData.signed_pdf_url = null;
+        updateData.signature_data_url = null;
+        updateData.signature_image_url = null;
+      }
+
       const { error: updateError } = await supabase
         .from('permits')
         .update(updateData)
