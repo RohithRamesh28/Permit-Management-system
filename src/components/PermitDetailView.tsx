@@ -85,6 +85,8 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
   const [editValidationError, setEditValidationError] = useState<string | null>(null);
   const [showRemoveDocumentModal, setShowRemoveDocumentModal] = useState(false);
   const [documentToRemove, setDocumentToRemove] = useState<{ url: string; name: string } | null>(null);
+  const [editInitialStateLoaded, setEditInitialStateLoaded] = useState(false);
+  const [showReplaceDocumentModal, setShowReplaceDocumentModal] = useState(false);
 
   const { approvers, loading: loadingApprovers } = useApprovers();
 
@@ -153,6 +155,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
       setEditAvailableStates([]);
       setEditAvailableCountyCities([]);
       setEditStatesError(null);
+      setEditInitialStateLoaded(false);
     }
   }, [permit, isEditMode]);
 
@@ -1304,15 +1307,17 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
     }
   }, [editJobDetails]);
 
-  const editLoadStates = async (level: 'State' | 'CountyCity', type: 'General' | 'Electrical' | 'Specialty', entity: string) => {
+  const editLoadStates = async (level: 'State' | 'CountyCity', type: 'General' | 'Electrical' | 'Specialty', entity: string, preserveState = false) => {
     if (!type || !entity) return;
     setEditStatesLoading(true);
     setEditStatesError(null);
     setEditAvailableStates([]);
-    setEditSelectedState(null);
-    setEditSelectedCountyCityTitle(null);
-    setEditQpName(null);
-    setEditQpEmail(null);
+    if (!preserveState) {
+      setEditSelectedState(null);
+      setEditSelectedCountyCityTitle(null);
+      setEditQpName(null);
+      setEditQpEmail(null);
+    }
     const states = await getAvailableStates(level, type, entity);
     setEditAvailableStates(states);
     if (states.length === 0) {
@@ -1363,7 +1368,11 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
 
   useEffect(() => {
     if (isEditMode && editPermitType && editFormData?.performing_entity) {
-      editLoadStates(editPermitLevel, editPermitType, editFormData.performing_entity);
+      const shouldPreserveState = !editInitialStateLoaded && editSelectedState;
+      editLoadStates(editPermitLevel, editPermitType, editFormData.performing_entity, !!shouldPreserveState);
+      if (!editInitialStateLoaded) {
+        setEditInitialStateLoaded(true);
+      }
     }
   }, [editPermitType, editFormData?.performing_entity, editPermitLevel]);
 
@@ -2328,29 +2337,89 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                             <label className="block text-sm font-semibold text-gray-900 mb-1">
                               Permit Application <span className="text-red-500">*</span>
                             </label>
-                            <label className={`flex items-center gap-2 px-3 py-2.5 border border-dashed rounded cursor-pointer transition-colors ${editShowDocumentError ? 'border-red-400 bg-red-50' : 'border-gray-300 hover:bg-gray-50'}`}>
-                              <Upload size={16} className={editShowDocumentError ? 'text-red-500' : 'text-gray-400'} />
-                              <span className={`text-xs ${editShowDocumentError ? 'text-red-600' : 'text-gray-600'}`}>
-                                {editDocumentToSign ? editDocumentToSign.name : 'Upload PDF'}
-                              </span>
-                              <input
-                                type="file"
-                                accept=".pdf"
-                                onChange={(e) => {
-                                  handleEditDocumentToSignChange(e);
-                                  setEditShowDocumentError(false);
-                                }}
-                                className="hidden"
-                              />
-                            </label>
-                            {editShowDocumentError && !editDocumentToSign && (
+                            {(() => {
+                              const existingDoc = documents.find(doc => doc.document_type === 'to_sign');
+                              const docUrl = permit?.original_document_url || existingDoc?.file_url;
+                              const docName = existingDoc?.file_name || 'Permit Application';
+
+                              if (editDocumentToSign) {
+                                return (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => setPreviewDocument({
+                                        url: URL.createObjectURL(editDocumentToSign),
+                                        name: editDocumentToSign.name,
+                                        type: 'application/pdf'
+                                      })}
+                                      className="flex items-center gap-3 p-3 border-2 border-blue-300 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors text-left w-full"
+                                    >
+                                      <FileText size={20} className="text-blue-600" />
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-gray-900 truncate">{editDocumentToSign.name}</p>
+                                        <p className="text-xs text-blue-700">New document - {(editDocumentToSign.size / 1024).toFixed(1)} KB</p>
+                                      </div>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={handleEditRemoveDocumentToSign}
+                                      className="mt-2 text-xs text-red-600 hover:text-red-800 font-medium"
+                                    >
+                                      Cancel replacement
+                                    </button>
+                                  </>
+                                );
+                              }
+
+                              if (docUrl) {
+                                return (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => setPreviewDocument({
+                                        url: docUrl,
+                                        name: docName,
+                                        type: 'application/pdf'
+                                      })}
+                                      className="flex items-center gap-3 p-3 border-2 border-amber-300 bg-amber-50 hover:bg-amber-100 rounded-lg transition-colors text-left w-full"
+                                    >
+                                      <FileText size={20} className="text-amber-600" />
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-gray-900 truncate">{docName}</p>
+                                        <p className="text-xs text-amber-700">Current document</p>
+                                      </div>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setShowReplaceDocumentModal(true)}
+                                      className="mt-2 text-xs text-[#0072BC] hover:text-[#005a94] font-medium"
+                                    >
+                                      Replace document
+                                    </button>
+                                  </>
+                                );
+                              }
+
+                              return (
+                                <label className={`flex items-center gap-2 px-3 py-2.5 border border-dashed rounded cursor-pointer transition-colors ${editShowDocumentError ? 'border-red-400 bg-red-50' : 'border-gray-300 hover:bg-gray-50'}`}>
+                                  <Upload size={16} className={editShowDocumentError ? 'text-red-500' : 'text-gray-400'} />
+                                  <span className={`text-xs ${editShowDocumentError ? 'text-red-600' : 'text-gray-600'}`}>
+                                    Upload PDF
+                                  </span>
+                                  <input
+                                    type="file"
+                                    accept=".pdf"
+                                    onChange={(e) => {
+                                      handleEditDocumentToSignChange(e);
+                                      setEditShowDocumentError(false);
+                                    }}
+                                    className="hidden"
+                                  />
+                                </label>
+                              );
+                            })()}
+                            {editShowDocumentError && !editDocumentToSign && !documents.find(doc => doc.document_type === 'to_sign') && (
                               <p className="text-[10px] text-red-600 mt-1">Required field</p>
-                            )}
-                            {editDocumentToSign && (
-                              <div className="flex items-center justify-between mt-2 text-[10px] text-gray-600">
-                                <span>{(editDocumentToSign.size / 1024).toFixed(1)} KB</span>
-                                <button type="button" onClick={handleEditRemoveDocumentToSign} className="text-red-600 hover:text-red-800 font-medium">Remove</button>
-                              </div>
                             )}
 
                             <div className="mt-3 pt-3 border-t border-gray-100">
@@ -2932,6 +3001,80 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                   Confirm Remove
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showReplaceDocumentModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <AlertCircle className="text-amber-600" size={24} />
+              Replace Document
+            </h2>
+
+            <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+              <p className="text-sm text-amber-900">
+                This is an important document. Please make sure to upload the correct replacement document.
+              </p>
+            </div>
+
+            {(() => {
+              const existingDoc = documents.find(doc => doc.document_type === 'to_sign');
+              const docUrl = permit?.original_document_url || existingDoc?.file_url;
+              const docName = existingDoc?.file_name || 'Permit Application';
+
+              return (
+                <div className="mb-6">
+                  <p className="text-sm text-gray-600 mb-3">Current document:</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (docUrl) {
+                        setPreviewDocument({
+                          url: docUrl,
+                          name: docName,
+                          type: 'application/pdf'
+                        });
+                      }
+                    }}
+                    className="flex items-center gap-3 p-3 border border-gray-200 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors text-left w-full"
+                  >
+                    <FileText size={20} className="text-gray-500" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{docName}</p>
+                      <p className="text-xs text-gray-500">Click to preview</p>
+                    </div>
+                    <Eye size={16} className="text-gray-400" />
+                  </button>
+                </div>
+              );
+            })()}
+
+            <div className="flex flex-col gap-3">
+              <label className="flex flex-col items-center justify-center gap-2 px-4 py-6 border-2 border-dashed border-[#0072BC] rounded-lg cursor-pointer hover:bg-blue-50 transition-colors">
+                <Upload size={24} className="text-[#0072BC]" />
+                <span className="text-sm font-medium text-[#0072BC]">Select New Document</span>
+                <span className="text-xs text-gray-500">PDF files only</span>
+                <input
+                  type="file"
+                  accept=".pdf"
+                  onChange={(e) => {
+                    handleEditDocumentToSignChange(e);
+                    setEditShowDocumentError(false);
+                    setShowReplaceDocumentModal(false);
+                  }}
+                  className="hidden"
+                />
+              </label>
+
+              <button
+                onClick={() => setShowReplaceDocumentModal(false)}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>

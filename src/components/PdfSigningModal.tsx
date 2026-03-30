@@ -355,13 +355,18 @@ export default function PdfSigningModal({ pdfUrl, pdfName, onClose, onApprove }:
       return;
     }
 
+    const wrapper = pdfWrapperRef.current;
+    const actualPreviewDimensions = wrapper
+      ? { width: wrapper.offsetWidth, height: wrapper.offsetHeight }
+      : previewDimensions;
+
     const signatureData = signatures.map(sig => ({
       signatureData: sig.dataUrl,
       signerName: sig.signerName,
       position: sig.position,
       size: sig.size,
       pdfDimensions: pdfDimensions,
-      previewDimensions: previewDimensions,
+      previewDimensions: actualPreviewDimensions,
     }));
 
     onApprove(signatureData);
