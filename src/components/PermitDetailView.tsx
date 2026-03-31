@@ -87,6 +87,9 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
   const [documentToRemove, setDocumentToRemove] = useState<{ url: string; name: string } | null>(null);
   const [editInitialStateLoaded, setEditInitialStateLoaded] = useState(false);
   const [showReplaceDocumentModal, setShowReplaceDocumentModal] = useState(false);
+  const [sharePointUploading, setSharePointUploading] = useState(false);
+  const [sharePointUploadFailed, setSharePointUploadFailed] = useState(false);
+  const [sharePointRetryCount, setSharePointRetryCount] = useState(0);
 
   const { approvers, loading: loadingApprovers } = useApprovers();
 
@@ -639,15 +642,66 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
       setCurrentApprovalAction(null);
       await fetchPermitDetails();
 
-      setSuccessMessage('Permit approved and activated');
+      setSuccessMessage('Permit approved');
       setShowSuccessToast(true);
       setTimeout(() => setShowSuccessToast(false), 3000);
+
+      uploadPermitToSharePoint(permitId, permit.ontivity_project_number);
     } catch (error) {
       console.error('Error in Approver approval:', error);
       alert('Error processing approval. Please try again.');
     } finally {
       setActionInProgress(false);
     }
+  };
+
+  const uploadPermitToSharePoint = async (permitIdToUpload: string, projectNumber: string, isRetry = false) => {
+    if (isRetry) {
+      setSharePointRetryCount(prev => prev + 1);
+    } else {
+      setSharePointRetryCount(0);
+    }
+
+    setSharePointUploading(true);
+    setSharePointUploadFailed(false);
+
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/upload-permit-to-sharepoint`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseAnonKey}`,
+        },
+        body: JSON.stringify({
+          permit_id: permitIdToUpload,
+          ontivity_project_number: projectNumber,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || result.error) {
+        throw new Error(result.error || 'Upload failed');
+      }
+
+      setSharePointUploadFailed(false);
+      setSuccessMessage('Files uploaded to SharePoint successfully');
+      setShowSuccessToast(true);
+      setTimeout(() => setShowSuccessToast(false), 3000);
+    } catch (error) {
+      console.error('SharePoint upload error:', error);
+      setSharePointUploadFailed(true);
+    } finally {
+      setSharePointUploading(false);
+    }
+  };
+
+  const handleSharePointRetry = () => {
+    if (!permit) return;
+    uploadPermitToSharePoint(permitId, permit.ontivity_project_number, true);
   };
 
   const handleApproverReject = async () => {
@@ -2792,6 +2846,33 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
 
                     {permit.current_stage === 'approved' && (
                       <div className="mt-4 pt-4 border-t border-gray-300 space-y-3">
+                        {sharePointUploading && (
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <div className="flex items-center justify-center gap-3">
+                              <Loader2 className="animate-spin text-blue-600" size={20} />
+                              <span className="text-sm text-blue-700 font-medium">Uploading to SharePoint...</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {sharePointUploadFailed && !sharePointUploading && (
+                          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                            <div className="text-center">
+                              <p className="text-sm text-red-700 font-medium mb-2">
+                                {sharePointRetryCount >= 2 ? 'Upload failed. Contact admin.' : 'SharePoint upload failed.'}
+                              </p>
+                              {sharePointRetryCount < 2 && (
+                                <button
+                                  onClick={handleSharePointRetry}
+                                  className="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors"
+                                >
+                                  Retry
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
                         <button
                           onClick={() => setShowUploadModal(true)}
                           className="w-full flex items-center justify-center gap-2 bg-[#0072BC] text-white px-4 py-2 rounded-lg hover:bg-[#005a94] transition-colors"
