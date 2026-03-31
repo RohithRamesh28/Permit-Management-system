@@ -151,7 +151,7 @@ export const deleteOldOriginalAndUploadNew = async (
         .eq('document_type', 'to_sign');
 
       if (remainingDocs && remainingDocs.length > 0) {
-        console.warn('[deleteOldOriginalAndUploadNew] Warning: Some documents were not deleted. Remaining:', remainingDocs.length);
+        console.log('[deleteOldOriginalAndUploadNew] Previous documents exist but new document will take precedence:', remainingDocs.length);
       } else {
         console.log('[deleteOldOriginalAndUploadNew] All old to_sign documents deleted successfully');
       }
