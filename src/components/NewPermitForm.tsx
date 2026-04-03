@@ -92,9 +92,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
         }
       }
 
-      if (jobDetails.carrier) {
-        setFormData((prev) => ({ ...prev, end_customer: jobDetails.carrier }));
-      }
+      setFormData((prev) => ({ ...prev, end_customer: jobDetails.carrier || '' }));
     }
   }, [jobDetails]);
 
