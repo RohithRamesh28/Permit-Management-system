@@ -2840,12 +2840,11 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                     <div className="space-y-3">
                       <div>
                         <label className="block text-sm text-gray-500 mb-1">Valid Until (MM/DD/YYYY)</label>
-                        <input
-                          type="text"
+                        <DateInput
+                          name="sidebarPermitValidity"
                           value={sidebarPermitValidity}
-                          onChange={(e) => setSidebarPermitValidity(e.target.value)}
-                          placeholder="MM/DD/YYYY"
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                          onChange={(_, value) => setSidebarPermitValidity(value)}
+                          className="text-sm"
                         />
                       </div>
                       <button
