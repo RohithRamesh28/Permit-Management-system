@@ -1613,9 +1613,13 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
       setAdditionalFiles([]);
       await fetchPermitDetails();
 
-      setSuccessMessage('Files uploaded successfully');
-      setShowSuccessToast(true);
-      setTimeout(() => setShowSuccessToast(false), 3000);
+      if (permit.ontivity_project_number) {
+        await uploadPermitToSharePoint(permit.id, permit.ontivity_project_number);
+      } else {
+        setSuccessMessage('Files saved successfully');
+        setShowSuccessToast(true);
+        setTimeout(() => setShowSuccessToast(false), 3000);
+      }
     } catch (error) {
       console.error('Error uploading additional files:', error);
       alert('Error uploading files. Please try again.');
@@ -3299,7 +3303,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                 disabled={additionalFiles.length === 0 || uploadingFiles}
                 className="px-4 py-2 bg-[#0072BC] text-white rounded-lg hover:bg-[#005a94] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {uploadingFiles ? 'Uploading...' : 'Upload Files'}
+                {uploadingFiles ? 'Sending to SharePoint...' : 'Send to SharePoint'}
               </button>
             </div>
           </div>
