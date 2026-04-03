@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { CheckCircle, XCircle, FileText, Clock, Eye, PlusCircle, CreditCard as Edit2, AlertCircle, Upload, User, Lock, Loader2 } from 'lucide-react';
+import { CheckCircle, XCircle, FileText, Clock, Eye, PlusCircle, CreditCard as Edit2, AlertCircle, Upload, User, Lock, Loader2, RefreshCw } from 'lucide-react';
 import { supabase, Permit, PermitDocument, PermitAuditLog } from '../lib/supabase';
 import { SignaturePad, SignaturePadRef } from './SignaturePad';
 import { generatePermitPDF, downloadPDF, mergePDFs, embedMultipleSignaturesInPDF, SignatureData } from '../services/pdfGenerator';
@@ -1783,6 +1783,47 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
     }
   };
 
+  const handleReopenPermit = async () => {
+    if (!permit) return;
+    setActionInProgress(true);
+
+    try {
+      const reopenedByName = userName || 'System Admin';
+
+      const { error: updateError } = await supabase
+        .from('permits')
+        .update({
+          current_stage: 'approved',
+          closed_at: null,
+          closed_by: null,
+          close_notes: null,
+        })
+        .eq('id', permitId);
+
+      if (updateError) throw updateError;
+
+      await supabase.from('permit_audit_log').insert([
+        {
+          permit_id: permitId,
+          action: 'Re-opened',
+          performed_by: reopenedByName,
+          notes: 'Permit re-opened',
+        },
+      ]);
+
+      await fetchPermitDetails();
+
+      setSuccessMessage('Permit re-opened successfully');
+      setShowSuccessToast(true);
+      setTimeout(() => setShowSuccessToast(false), 3000);
+    } catch (error) {
+      console.error('Error re-opening permit:', error);
+      alert('Error re-opening permit. Please try again.');
+    } finally {
+      setActionInProgress(false);
+    }
+  };
+
   const validateDateFormat = (dateStr: string): boolean => {
     if (!dateStr) return true;
     const regex = /^(0[1-9]|1[0-2])\/(0[1-9]|[12]\d|3[01])\/\d{4}$/;
@@ -3047,6 +3088,27 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                         >
                           <XCircle size={18} />
                           Close Permit
+                        </button>
+                      </div>
+                    )}
+
+                    {permit.current_stage === 'closed' && (
+                      <div className="mt-4 pt-4 border-t border-gray-300 space-y-3">
+                        <div className="p-3 bg-gray-100 border border-gray-300 rounded-lg">
+                          <p className="text-sm text-gray-700 font-medium text-center">This permit is closed</p>
+                          {permit.closed_at && (
+                            <p className="text-xs text-gray-500 text-center mt-1">
+                              Closed on {formatDate(permit.closed_at)}
+                            </p>
+                          )}
+                        </div>
+                        <button
+                          onClick={handleReopenPermit}
+                          disabled={actionInProgress}
+                          className="w-full flex items-center justify-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                        >
+                          <RefreshCw size={18} />
+                          Re-open Permit
                         </button>
                       </div>
                     )}
