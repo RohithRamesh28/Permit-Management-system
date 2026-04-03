@@ -384,7 +384,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         },
       ]);
 
-      const powerAutomateUrl = 'https://default3596b7c39b4b4ef89dde39825373af.28.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/ad18b6b1beab4005b6980e9633136adc/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=t22f7Blpsn0r0xQTCch0lHahz5jEnP3Ka23y3dPZFZY';
+      const powerAutomateUrl = 'https://default3596b7c39b4b4ef89dde39825373af.28.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/c9bb3dc15bc34e1681cdcdda36db4cee/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=t22f7Blpsn0r0xQTCch0lHahz5jEnP3Ka23y3dPZFZY';
 
       const payload = {
         timing_id: permitId,
@@ -478,7 +478,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         },
       ]);
 
-      const powerAutomateUrl = 'https://default3596b7c39b4b4ef89dde39825373af.28.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/ad18b6b1beab4005b6980e9633136adc/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=t22f7Blpsn0r0xQTCch0lHahz5jEnP3Ka23y3dPZFZY';
+      const powerAutomateUrl = 'https://default3596b7c39b4b4ef89dde39825373af.28.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/c9bb3dc15bc34e1681cdcdda36db4cee/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=t22f7Blpsn0r0xQTCch0lHahz5jEnP3Ka23y3dPZFZY';
 
       const payload = {
         timing_id: permitId,
