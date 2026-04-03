@@ -61,7 +61,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
     detailed_sow: '',
   });
 
-  const [permitLevel, setPermitLevel] = useState<"State" | "CountyCity">("State");
+  const [permitLevel, setPermitLevel] = useState<"State" | "CountyCity">("CountyCity");
   const [permitType, setPermitType] = useState<"General" | "Electrical" | "Specialty" | null>(null);
   const [selectedState, setSelectedState] = useState<string | null>(null);
   const [selectedCountyCityTitle, setSelectedCountyCityTitle] = useState<string | null>(null);
@@ -636,17 +636,6 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     <input
                       type="radio"
                       name="permitLevel"
-                      value="State"
-                      checked={permitLevel === "State"}
-                      onChange={() => handlePermitLevelChange("State")}
-                      className="w-4 h-4 text-[#0072BC] border-gray-300 focus:ring-[#0072BC]"
-                    />
-                    <span className="text-sm font-medium text-gray-700">State</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="permitLevel"
                       value="CountyCity"
                       checked={permitLevel === "CountyCity"}
                       onChange={() => handlePermitLevelChange("CountyCity")}
@@ -654,7 +643,23 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     />
                     <span className="text-sm font-medium text-gray-700">County / City</span>
                   </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="permitLevel"
+                      value="State"
+                      checked={permitLevel === "State"}
+                      onChange={() => handlePermitLevelChange("State")}
+                      className="w-4 h-4 text-[#0072BC] border-gray-300 focus:ring-[#0072BC]"
+                    />
+                    <span className="text-sm font-medium text-gray-700">State</span>
+                  </label>
                 </div>
+                {permitLevel === "State" && (
+                  <p className="mt-2 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                    Please verify that this license is not available at the County/City level before proceeding with a State-level permit.
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
