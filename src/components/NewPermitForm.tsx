@@ -29,6 +29,7 @@ interface FormData {
   end_customer: string;
   project_value: string;
   actual_date_of_completion: string;
+  permit_validity: string;
   detailed_sow: string;
 }
 
@@ -56,6 +57,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
     end_customer: '',
     project_value: '',
     actual_date_of_completion: '',
+    permit_validity: '',
     detailed_sow: '',
   });
 
@@ -331,6 +333,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
             end_customer: formData.end_customer,
             project_value: parseFloat(formData.project_value) || 0,
             actual_date_of_completion: formData.actual_date_of_completion || null,
+            permit_validity: formData.permit_validity || null,
             detailed_sow: formData.detailed_sow,
             current_stage: initialStage,
             requires_signature: requiresSignature,
@@ -484,6 +487,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
         end_customer: formData.end_customer,
         project_value: parseInt(formData.project_value) || 0,
         actual_date_of_completion: formData.actual_date_of_completion || '',
+        permit_validity: formData.permit_validity || '',
         detailed_sow: formData.detailed_sow,
         status: 'submitted',
         requires_signature: requiresSignature,
@@ -973,6 +977,14 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     <DateInput
                       name="actual_date_of_completion"
                       value={formData.actual_date_of_completion}
+                      onChange={handleDateChange}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Permit Validity</label>
+                    <DateInput
+                      name="permit_validity"
+                      value={formData.permit_validity}
                       onChange={handleDateChange}
                     />
                   </div>

@@ -117,6 +117,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         end_customer: permit.end_customer || '',
         project_value: permit.project_value?.toString() || '',
         actual_date_of_completion: permit.actual_date_of_completion || '',
+        permit_validity: permit.permit_validity || '',
         detailed_sow: permit.detailed_sow || '',
         requester_type: permit.requester_type || '',
       });
@@ -550,6 +551,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         end_customer: permit.end_customer || '',
         project_value: permit.project_value?.toString() || '0',
         actual_date_of_completion: permit.actual_date_of_completion || '',
+        permit_validity: permit.permit_validity || '',
         detailed_sow: permit.detailed_sow || '',
         requiresSignature: false,
         status: 'Approved',
@@ -847,6 +849,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         end_customer: permit.end_customer || '',
         project_value: permit.project_value?.toString() || '0',
         actual_date_of_completion: permit.actual_date_of_completion || '',
+        permit_validity: permit.permit_validity || '',
         detailed_sow: permit.detailed_sow || '',
         requiresSignature: false,
         status: 'Approved',
@@ -1224,6 +1227,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         end_customer: editFormData.end_customer,
         project_value: parseFloat(editFormData.project_value) || 0,
         actual_date_of_completion: editFormData.actual_date_of_completion || null,
+        permit_validity: editFormData.permit_validity || null,
         detailed_sow: editFormData.detailed_sow,
         requester_type: editFormData.requester_type,
         qp_name: resolvedQpName,
@@ -1652,6 +1656,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
       end_customer: permit.end_customer || '',
       project_value: permit.project_value?.toString() || '0',
       actual_date_of_completion: permit.actual_date_of_completion || '',
+      permit_validity: permit.permit_validity || '',
       detailed_sow: permit.detailed_sow || '',
       requiresSignature: false,
       status: permit.current_stage,
@@ -1726,6 +1731,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         project_value: permit.project_value,
         detailed_sow: permit.detailed_sow,
         actual_date_of_completion: permit.actual_date_of_completion || '',
+        permit_validity: permit.permit_validity || '',
         closed_by: closedByName,
         closed_at: new Date().toISOString(),
         close_notes: closeNotes.trim() || '',
@@ -1941,6 +1947,12 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                           <div>
                             <p className="text-sm text-gray-500">Actual Completion</p>
                             <p className="text-gray-900 font-medium">{formatDate(permit.actual_date_of_completion)}</p>
+                          </div>
+                        )}
+                        {permit.permit_validity && (
+                          <div>
+                            <p className="text-sm text-gray-500">Permit Validity</p>
+                            <p className="text-gray-900 font-medium">{formatDate(permit.permit_validity)}</p>
                           </div>
                         )}
                       </div>
@@ -2387,6 +2399,14 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                             <DateInput
                               name="actual_date_of_completion"
                               value={editFormData?.actual_date_of_completion || ''}
+                              onChange={handleEditDateChange}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Permit Validity</label>
+                            <DateInput
+                              name="permit_validity"
+                              value={editFormData?.permit_validity || ''}
                               onChange={handleEditDateChange}
                             />
                           </div>

@@ -32,6 +32,7 @@ export interface Permit {
   end_customer: string;
   project_value: number;
   actual_date_of_completion?: string;
+  permit_validity?: string;
   detailed_sow: string;
   current_stage: ApprovalStage;
   rejection_notes?: string;

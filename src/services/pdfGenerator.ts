@@ -22,6 +22,7 @@ export interface PermitFormData {
   end_customer: string;
   project_value: string;
   actual_date_of_completion?: string;
+  permit_validity?: string;
   detailed_sow: string;
   requiresSignature: boolean;
   signatureDataUrl?: string;
@@ -221,9 +222,18 @@ export const generatePermitPDF = (formData: PermitFormData): Blob => {
   tempY2 = addField('Project Value', `$${formData.project_value}`, col2X, yPos, col1Width);
   yPos = Math.max(tempY, tempY2) + 2;
 
-  if (formData.actual_date_of_completion) {
-    yPos = addField('Actual Date of Completion', formData.actual_date_of_completion, margin, yPos, col1Width);
-    yPos += 2;
+  if (formData.actual_date_of_completion || formData.permit_validity) {
+    if (formData.actual_date_of_completion && formData.permit_validity) {
+      tempY = addField('Actual Date of Completion', formData.actual_date_of_completion, margin, yPos, col1Width);
+      tempY2 = addField('Permit Validity', formData.permit_validity, col2X, yPos, col1Width);
+      yPos = Math.max(tempY, tempY2) + 2;
+    } else if (formData.actual_date_of_completion) {
+      yPos = addField('Actual Date of Completion', formData.actual_date_of_completion, margin, yPos, col1Width);
+      yPos += 2;
+    } else if (formData.permit_validity) {
+      yPos = addField('Permit Validity', formData.permit_validity, margin, yPos, col1Width);
+      yPos += 2;
+    }
   }
 
   yPos = addTextArea('Detailed Scope of Work', formData.detailed_sow, margin, yPos, contentWidth);
