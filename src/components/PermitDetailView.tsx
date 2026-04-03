@@ -90,6 +90,8 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
   const [sharePointUploading, setSharePointUploading] = useState(false);
   const [sharePointUploadFailed, setSharePointUploadFailed] = useState(false);
   const [sharePointRetryCount, setSharePointRetryCount] = useState(0);
+  const [sidebarPermitValidity, setSidebarPermitValidity] = useState('');
+  const [savingPermitValidity, setSavingPermitValidity] = useState(false);
 
   const { approvers, loading: loadingApprovers } = useApprovers();
 
@@ -99,6 +101,12 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
   useEffect(() => {
     fetchPermitDetails();
   }, [permitId]);
+
+  useEffect(() => {
+    if (permit) {
+      setSidebarPermitValidity(permit.permit_validity || '');
+    }
+  }, [permit?.permit_validity]);
 
   useEffect(() => {
     if (permit && isEditMode) {
@@ -394,6 +402,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         qp_name: permit.qp_name || '',
         is_qp_signature_required: permit.is_qp_signature_required,
         is_approver_signature_required: permit.is_approver_signature_required,
+        permit_validity: permit.permit_validity || '',
       };
 
       try {
@@ -483,6 +492,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         submitter_name: permit.requestor || '',
         qp_email: permit.qp_email || '',
         qp_name: permit.qp_name || '',
+        permit_validity: permit.permit_validity || '',
       };
 
       try {
@@ -629,6 +639,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         qp_email: permit.qp_email || '',
         approver_name: permit.approver_name || '',
         approver_email: permit.approver_email || '',
+        permit_validity: permit.permit_validity || '',
       };
 
       try {
@@ -780,6 +791,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         qp_name: permit.qp_name || '',
         approver_email: permit.approver_email || '',
         approver_name: permit.approver_name || '',
+        permit_validity: permit.permit_validity || '',
       };
 
       try {
@@ -923,6 +935,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         approved_by: approverName,
         approved_at: new Date().toISOString(),
         pdf_url: pdfUrl || '',
+        permit_validity: permit.permit_validity || '',
       };
 
       try {
@@ -1011,6 +1024,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         rejection_reason: rejectionNotes,
         rejected_by: 'System Admin',
         rejected_at: new Date().toISOString(),
+        permit_validity: permit.permit_validity || '',
       };
 
       try {
@@ -1341,6 +1355,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         approver_name: resolvedApproverName || '',
         is_qp_signature_required: editRequiresSignature && editSendToQpForSignature,
         is_approver_signature_required: editRequiresSignature && editSendToApproverForSignature,
+        permit_validity: editFormData.permit_validity || '',
       };
 
       try {
@@ -1765,6 +1780,77 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
       alert('Error closing permit. Please try again.');
     } finally {
       setActionInProgress(false);
+    }
+  };
+
+  const validateDateFormat = (dateStr: string): boolean => {
+    if (!dateStr) return true;
+    const regex = /^(0[1-9]|1[0-2])\/(0[1-9]|[12]\d|3[01])\/\d{4}$/;
+    return regex.test(dateStr);
+  };
+
+  const handleSavePermitValidity = async () => {
+    if (!permit) return;
+
+    if (permit.current_stage === 'closed') {
+      alert('Cannot update permit validity for closed permits.');
+      return;
+    }
+
+    if (sidebarPermitValidity && !validateDateFormat(sidebarPermitValidity)) {
+      alert('Please enter a valid date in MM/DD/YYYY format');
+      return;
+    }
+
+    setSavingPermitValidity(true);
+
+    try {
+      const { error: updateError } = await supabase
+        .from('permits')
+        .update({ permit_validity: sidebarPermitValidity || null })
+        .eq('id', permitId);
+
+      if (updateError) throw updateError;
+
+      await supabase.from('permit_audit_log').insert([
+        {
+          permit_id: permitId,
+          action: 'Permit Validity Updated',
+          performed_by: userName || 'System User',
+          notes: sidebarPermitValidity ? `Permit validity set to ${sidebarPermitValidity}` : 'Permit validity cleared',
+        },
+      ]);
+
+      const powerAutomateUrl = 'https://default3596b7c39b4b4ef89dde39825373af.28.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/c9bb3dc15bc34e1681cdcdda36db4cee/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=XflS1U3z0zJ8icT07Wzj8nTU2o0VIG0xnbt92ohpfZI';
+
+      const payload = {
+        permit_id: permit.permit_id,
+        timing_id: permitId,
+        unique_id: permit.permit_id,
+        action: 'permit_validity_updated',
+        permit_validity: sidebarPermitValidity || '',
+      };
+
+      try {
+        await fetch(powerAutomateUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } catch (flowError) {
+        console.error('Error sending permit validity update to Power Automate:', flowError);
+      }
+
+      await fetchPermitDetails();
+
+      setSuccessMessage('Permit validity updated successfully');
+      setShowSuccessToast(true);
+      setTimeout(() => setShowSuccessToast(false), 3000);
+    } catch (error) {
+      console.error('Error updating permit validity:', error);
+      alert('Error updating permit validity. Please try again.');
+    } finally {
+      setSavingPermitValidity(false);
     }
   };
 
@@ -2736,6 +2822,54 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                     )}
                   </div>
                 )}
+
+                <div className="bg-gray-50 rounded-lg p-6">
+                  <h2 className="text-lg font-semibold text-gray-900 mb-4">Permit Validity</h2>
+                  {permit.current_stage === 'closed' ? (
+                    <div>
+                      <p className="text-sm text-gray-500 mb-1">Valid Until</p>
+                      <p className="text-gray-900 font-medium">
+                        {permit.permit_validity ? formatDate(permit.permit_validity) : 'Not set'}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
+                        <Lock size={12} />
+                        Permit is closed - validity cannot be changed
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-sm text-gray-500 mb-1">Valid Until (MM/DD/YYYY)</label>
+                        <input
+                          type="text"
+                          value={sidebarPermitValidity}
+                          onChange={(e) => setSidebarPermitValidity(e.target.value)}
+                          placeholder="MM/DD/YYYY"
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                        />
+                      </div>
+                      <button
+                        onClick={handleSavePermitValidity}
+                        disabled={savingPermitValidity || sidebarPermitValidity === (permit.permit_validity || '')}
+                        className="w-full flex items-center justify-center gap-2 bg-[#0072BC] text-white px-4 py-2 rounded-lg hover:bg-[#005a94] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {savingPermitValidity ? (
+                          <>
+                            <Loader2 className="animate-spin" size={16} />
+                            Saving...
+                          </>
+                        ) : (
+                          'Confirm Permit Validity'
+                        )}
+                      </button>
+                      {permit.permit_validity && (
+                        <p className="text-xs text-gray-500 text-center">
+                          Current: {formatDate(permit.permit_validity)}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
 
                 {!readOnlyMode && (
                   <div className="bg-gray-50 rounded-lg p-6">
