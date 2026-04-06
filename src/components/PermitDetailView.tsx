@@ -1793,7 +1793,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
       const { error: updateError } = await supabase
         .from('permits')
         .update({
-          current_stage: 'approved',
+          current_stage: 'active',
           closed_at: null,
           closed_by: null,
           close_notes: null,
@@ -1810,6 +1810,52 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
           notes: 'Permit re-opened',
         },
       ]);
+
+      const reopenUrl = 'https://default3596b7c39b4b4ef89dde39825373af.28.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/53a1fbea5beb4afbbab6dd68d92a519e/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=-RTa3u1ouV89ah0pltsPZ5TM9iuSMsWvPYcVC7rGdXA';
+
+      const payload = {
+        timing_id: permitId,
+        unique_id: permit.permit_id,
+        action: 'reopened',
+        current_stage: 'active',
+        submitted_by: permit.requestor,
+        submitted_by_email: permit.requester_email || '',
+        requestor: permit.requestor,
+        requester_type: permit.requester_type || '',
+        ontivity_project_number: permit.ontivity_project_number,
+        performing_entity: permit.performing_entity,
+        date_of_request: permit.date_of_request,
+        date_of_project_commencement: permit.date_of_project_commencement,
+        estimated_date_of_completion: permit.estimated_date_of_completion || '',
+        type_of_permit: permit.type_of_permit,
+        utility_provider: permit.utility_provider || '',
+        state: permit.state,
+        permit_jurisdiction: permit.permit_jurisdiction || permit.state,
+        land_owner: permit.land_owner,
+        tower_owner: permit.tower_owner,
+        end_customer: permit.end_customer,
+        project_value: permit.project_value,
+        detailed_sow: permit.detailed_sow,
+        status: 'reopened',
+        reopened_by: reopenedByName,
+        reopened_at: new Date().toISOString(),
+        pdf_url: permit.signed_pdf_url || '',
+        qp_name: permit.qp_name || '',
+        qp_email: permit.qp_email || '',
+        approver_name: permit.approver_name || '',
+        approver_email: permit.approver_email || '',
+        permit_validity: permit.permit_validity || '',
+      };
+
+      try {
+        await fetch(reopenUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } catch (flowError) {
+        console.error('Error sending to Power Automate:', flowError);
+      }
 
       await fetchPermitDetails();
 
