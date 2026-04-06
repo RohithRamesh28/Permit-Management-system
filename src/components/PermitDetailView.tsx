@@ -1793,7 +1793,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
       const { error: updateError } = await supabase
         .from('permits')
         .update({
-          current_stage: 'active',
+          current_stage: 'approved',
           closed_at: null,
           closed_by: null,
           close_notes: null,
@@ -1817,7 +1817,7 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         timing_id: permitId,
         unique_id: permit.permit_id,
         action: 'reopened',
-        current_stage: 'active',
+        current_stage: 'approved',
         submitted_by: permit.requestor,
         submitted_by_email: permit.requester_email || '',
         requestor: permit.requestor,
