@@ -655,11 +655,6 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     <span className="text-sm font-medium text-gray-700">State</span>
                   </label>
                 </div>
-                {permitLevel === "State" && (
-                  <p className="mt-2 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-                    Please verify that this license is not available at the County/City level before proceeding with a State-level permit.
-                  </p>
-                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -824,6 +819,16 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                   />
                   {statesError && availableStates.length === 0 && (
                     <p className="text-[10px] text-amber-600 mt-1">{statesError}</p>
+                  )}
+                  {selectedState && permitLevel === "State" && (
+                    <p className="mt-2 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                      If the state you're looking for is not listed, then switch to county/city level permit.
+                    </p>
+                  )}
+                  {selectedState && permitLevel === "CountyCity" && (
+                    <p className="mt-2 text-xs text-blue-600 bg-blue-50 border border-blue-200 rounded-md px-3 py-2">
+                      If the county/city you're looking for is not listed, then switch to state level permit.
+                    </p>
                   )}
                 </div>
 
