@@ -827,7 +827,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                   )}
                   {selectedState && permitLevel === "CountyCity" && (
                     <p className="mt-2 text-xs text-blue-600 bg-blue-50 border border-blue-200 rounded-md px-3 py-2">
-                      If the State you're looking for is not listed, then switch to state level permit.
+                      If the state you're looking for is not listed, then switch to state level permit.
                     </p>
                   )}
                 </div>
