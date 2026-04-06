@@ -838,6 +838,9 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                       County / City <span className="text-red-500">*</span>
                       {countiesLoading && <Loader2 size={12} className="text-blue-500 animate-spin" />}
                     </label>
+                    <p className="mb-2 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                      If the county/city your looking for is not listed, then switch to Permit Level - <span className="font-bold">"State"</span>.
+                    </p>
                     <SearchableDropdown
                       name="county_city"
                       value={selectedCountyCityTitle || ""}
