@@ -814,7 +814,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                   )}
                   {permitType && permitLevel === "CountyCity" && (
                     <p className="mb-2 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-                      If the state you're looking for is not listed, then switch to <span className="font-bold">state level permit</span>.
+                      If the state you're looking for is not listed, then switch to Permit Level -<span className="font-bold">state</span>.
                     </p>
                   )}
                   <SearchableDropdown
