@@ -627,7 +627,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                 </div>
               </div>
 
-              <div className="border-t border-gray-200 pt-4 pb-4">
+              <div className="border-t border-gray-200 mt-6 pt-4 pb-4">
                 <label className="block text-xs font-medium text-gray-700 mb-2">
                   Permit Level <span className="text-red-500">*</span>
                 </label>
