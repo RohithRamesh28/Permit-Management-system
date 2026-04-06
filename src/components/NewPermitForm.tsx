@@ -807,6 +807,16 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                     {!permitType && <Lock size={12} className="text-gray-400" />}
                     {statesLoading && <Loader2 size={12} className="text-blue-500 animate-spin" />}
                   </label>
+                  {permitType && permitLevel === "State" && (
+                    <p className="mb-2 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                      If the state you're looking for is not listed, then switch to county/city level permit.
+                    </p>
+                  )}
+                  {permitType && permitLevel === "CountyCity" && (
+                    <p className="mb-2 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                      If the state you're looking for is not listed, then switch to state level permit.
+                    </p>
+                  )}
                   <SearchableDropdown
                     name="state"
                     value={selectedState || ""}
@@ -819,16 +829,6 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                   />
                   {statesError && availableStates.length === 0 && (
                     <p className="text-[10px] text-amber-600 mt-1">{statesError}</p>
-                  )}
-                  {selectedState && permitLevel === "State" && (
-                    <p className="mt-2 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-                      If the state you're looking for is not listed, then switch to county/city level permit.
-                    </p>
-                  )}
-                  {selectedState && permitLevel === "CountyCity" && (
-                    <p className="mt-2 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-                      If the state you're looking for is not listed, then switch to state level permit.
-                    </p>
                   )}
                 </div>
 
