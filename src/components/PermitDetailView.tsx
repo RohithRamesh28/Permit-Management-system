@@ -1857,6 +1857,11 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         console.error('Error sending to Power Automate:', flowError);
       }
 
+      setShowCloseModal(false);
+      setCloseNotes('');
+      setSharePointUploading(false);
+      setSharePointUploadFailed(false);
+
       await fetchPermitDetails();
 
       setSuccessMessage('Permit re-opened successfully');
