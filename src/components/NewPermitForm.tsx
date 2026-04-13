@@ -9,6 +9,7 @@ import { useQualifiedPerson } from '../hooks/useQualifiedPerson';
 import { getCurrentDateInMMDDYYYY } from '../utils/dateFormatters';
 import DateInput from './DateInput';
 import { getAvailableStates, getCountyCityOptions, getQPForSelection } from '../services/licensingService';
+import { getBusinessLicenses, BusinessLicense } from '../services/businessLicenseService';
 import { useApprovers, ApproverInfo } from '../hooks/useApprovers';
 
 interface NewPermitFormProps {
@@ -97,6 +98,13 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
       setFormData((prev) => ({ ...prev, end_customer: jobDetails.carrier || '' }));
     }
   }, [jobDetails]);
+
+  const [isBusinessLicense, setIsBusinessLicense] = useState(false);
+  const [businessLicenses, setBusinessLicenses] = useState<BusinessLicense[]>([]);
+  const [selectedBusinessLicense, setSelectedBusinessLicense] = useState<string>('');
+  const [isManualLicenseEntry, setIsManualLicenseEntry] = useState(false);
+  const [manualLicenseNumber, setManualLicenseNumber] = useState('');
+  const [businessLicenseLoading, setBusinessLicenseLoading] = useState(false);
 
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [documentToSign, setDocumentToSign] = useState<File | null>(null);
@@ -204,6 +212,27 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
     }
   }, [selectedCountyCityTitle, availableCountyCities]);
 
+  const loadBusinessLicenses = async () => {
+    if (!formData.performing_entity || !selectedState) return;
+    setBusinessLicenseLoading(true);
+
+    const countyCityArg = permitLevel === "CountyCity" ? selectedCountyCityTitle || undefined : undefined;
+    const licenses = await getBusinessLicenses(formData.performing_entity, selectedState, countyCityArg);
+    setBusinessLicenses(licenses);
+    setBusinessLicenseLoading(false);
+  };
+
+  useEffect(() => {
+    if (isBusinessLicense) {
+      loadBusinessLicenses();
+    } else {
+      setBusinessLicenses([]);
+      setSelectedBusinessLicense('');
+      setIsManualLicenseEntry(false);
+      setManualLicenseNumber('');
+    }
+  }, [isBusinessLicense, selectedState, selectedCountyCityTitle, formData.performing_entity]);
+
   const handlePermitLevelChange = (level: "State" | "CountyCity") => {
     setPermitLevel(level);
     setPermitType(null);
@@ -214,6 +243,11 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
     setQpName(null);
     setQpEmail(null);
     setStatesError(null);
+    setIsBusinessLicense(false);
+    setBusinessLicenses([]);
+    setSelectedBusinessLicense('');
+    setIsManualLicenseEntry(false);
+    setManualLicenseNumber('');
   };
 
   const handlePermitTypeChange = (type: "General" | "Electrical" | "Specialty") => {
@@ -351,6 +385,10 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
             is_qp_signature_required: sendToQpForSignature,
             is_approver_signature_required: sendToApproverForSignature,
             resubmission_count: 0,
+            is_business_license: isBusinessLicense,
+            business_license_number: isBusinessLicense
+              ? (isManualLicenseEntry ? manualLicenseNumber : selectedBusinessLicense) || null
+              : null,
           },
         ])
         .select()
@@ -506,6 +544,10 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
         current_stage: initialStage,
         document_to_sign_url: documentToSignFile?.url || '',
         signed_pdf_url: '',
+        is_business_license: isBusinessLicense,
+        business_license_number: isBusinessLicense
+          ? (isManualLicenseEntry ? manualLicenseNumber : selectedBusinessLicense) || ''
+          : '',
       };
 
       try {
@@ -850,6 +892,80 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                       required
                       loading={countiesLoading}
                     />
+                  </div>
+                )}
+
+                {selectedState && (permitLevel === "State" || (permitLevel === "CountyCity" && selectedCountyCityTitle)) && (
+                  <div className="flex items-center gap-2 mt-1">
+                    <input
+                      type="checkbox"
+                      id="isBusinessLicense"
+                      checked={isBusinessLicense}
+                      onChange={(e) => {
+                        setIsBusinessLicense(e.target.checked);
+                        if (!e.target.checked) {
+                          setSelectedBusinessLicense('');
+                          setIsManualLicenseEntry(false);
+                          setManualLicenseNumber('');
+                          setBusinessLicenses([]);
+                        }
+                      }}
+                      className="w-3.5 h-3.5 text-[#0072BC] border-gray-300 rounded focus:ring-[#0072BC]"
+                    />
+                    <label htmlFor="isBusinessLicense" className="text-xs font-medium text-gray-700 cursor-pointer">
+                      Is this a Business License?
+                    </label>
+                  </div>
+                )}
+
+                {isBusinessLicense && selectedState && (permitLevel === "State" || (permitLevel === "CountyCity" && selectedCountyCityTitle)) && (
+                  <div className="w-1/2">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
+                      Business License Number
+                      {businessLicenseLoading && <Loader2 size={12} className="text-blue-500 animate-spin" />}
+                    </label>
+                    {!isManualLicenseEntry ? (
+                      <>
+                        <SearchableDropdown
+                          name="business_license_number"
+                          value={selectedBusinessLicense}
+                          onChange={(value) => setSelectedBusinessLicense(value)}
+                          options={businessLicenses.map(l => l.licenseNumber)}
+                          placeholder="Select license number..."
+                          loading={businessLicenseLoading}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsManualLicenseEntry(true);
+                            setSelectedBusinessLicense('');
+                          }}
+                          className="mt-1.5 text-[10px] text-[#0072BC] hover:text-[#005a94] hover:underline transition-colors"
+                        >
+                          Did not find your license? Add your license manually.
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <input
+                          type="text"
+                          value={manualLicenseNumber}
+                          onChange={(e) => setManualLicenseNumber(e.target.value)}
+                          placeholder="Enter license number..."
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsManualLicenseEntry(false);
+                            setManualLicenseNumber('');
+                          }}
+                          className="mt-1.5 text-[10px] text-[#0072BC] hover:text-[#005a94] hover:underline transition-colors"
+                        >
+                          Back to dropdown
+                        </button>
+                      </>
+                    )}
                   </div>
                 )}
 
