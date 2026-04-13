@@ -919,13 +919,13 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                 )}
 
                 {isBusinessLicense && selectedState && (permitLevel === "State" || (permitLevel === "CountyCity" && selectedCountyCityTitle)) && (
-                  <div className="w-1/2">
+                  <div className="w-full">
                     <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
                       Business License Number
                       {businessLicenseLoading && <Loader2 size={12} className="text-blue-500 animate-spin" />}
                     </label>
-                    {!isManualLicenseEntry ? (
-                      <>
+                    <div className="flex items-start gap-3">
+                      <div className={`w-1/2 transition-all duration-300 ${isManualLicenseEntry ? 'opacity-40 blur-[1px] pointer-events-none select-none' : ''}`}>
                         <SearchableDropdown
                           name="business_license_number"
                           value={selectedBusinessLicense}
@@ -934,38 +934,48 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                           placeholder="Select license number..."
                           loading={businessLicenseLoading}
                         />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsManualLicenseEntry(true);
-                            setSelectedBusinessLicense('');
-                          }}
-                          className="mt-1.5 text-[10px] text-[#0072BC] hover:text-[#005a94] hover:underline transition-colors"
-                        >
-                          Did not find your license? Add your license manually.
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <input
-                          type="text"
-                          value={manualLicenseNumber}
-                          onChange={(e) => setManualLicenseNumber(e.target.value)}
-                          placeholder="Enter license number..."
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
-                        />
+                      </div>
+                      {isManualLicenseEntry && (
+                        <div className="w-1/2">
+                          <input
+                            type="text"
+                            value={manualLicenseNumber}
+                            onChange={(e) => setManualLicenseNumber(e.target.value)}
+                            placeholder="Enter license number..."
+                            autoFocus
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div className="mt-1.5 flex items-center gap-2">
+                      {!isManualLicenseEntry ? (
+                        <span className="text-[10px] text-gray-500">
+                          Did not find your license?{' '}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsManualLicenseEntry(true);
+                              setSelectedBusinessLicense('');
+                            }}
+                            className="inline-flex items-center px-2 py-0.5 text-[10px] font-medium text-white bg-[#0072BC] rounded hover:bg-[#005a94] transition-colors"
+                          >
+                            Add Manually
+                          </button>
+                        </span>
+                      ) : (
                         <button
                           type="button"
                           onClick={() => {
                             setIsManualLicenseEntry(false);
                             setManualLicenseNumber('');
                           }}
-                          className="mt-1.5 text-[10px] text-[#0072BC] hover:text-[#005a94] hover:underline transition-colors"
+                          className="inline-flex items-center px-2 py-0.5 text-[10px] font-medium text-[#0072BC] border border-[#0072BC] rounded hover:bg-[#0072BC] hover:text-white transition-colors"
                         >
                           Back to dropdown
                         </button>
-                      </>
-                    )}
+                      )}
+                    </div>
                   </div>
                 )}
 
