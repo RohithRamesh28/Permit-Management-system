@@ -2493,23 +2493,6 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                                 />
                               </div>
                             </div>
-                            <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-300">
-                              <div>
-                                <span className="text-xs font-medium text-gray-700">Send request to QP</span>
-                                <p className="text-[10px] text-gray-500">Notify the Qualified Person about this permit request</p>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const newValue = !editSendRequestToQp;
-                                  setEditSendRequestToQp(newValue);
-                                  if (!newValue) setEditSendToQpForSignature(false);
-                                }}
-                                className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#0072BC] focus:ring-offset-1 ${editSendRequestToQp ? 'bg-[#0072BC]' : 'bg-gray-300'}`}
-                              >
-                                <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${editSendRequestToQp ? 'translate-x-4' : 'translate-x-0'}`} />
-                              </button>
-                            </div>
                           </div>
                         )}
 
