@@ -87,6 +87,8 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
   const [documentToRemove, setDocumentToRemove] = useState<{ url: string; name: string } | null>(null);
   const [editInitialStateLoaded, setEditInitialStateLoaded] = useState(false);
   const [showReplaceDocumentModal, setShowReplaceDocumentModal] = useState(false);
+  const [editIsBusinessLicense, setEditIsBusinessLicense] = useState(false);
+  const [editBusinessLicenseNumber, setEditBusinessLicenseNumber] = useState('');
   const [sharePointUploading, setSharePointUploading] = useState(false);
   const [sharePointUploadFailed, setSharePointUploadFailed] = useState(false);
   const [sharePointRetryCount, setSharePointRetryCount] = useState(0);
@@ -168,6 +170,8 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
       setEditAvailableCountyCities([]);
       setEditStatesError(null);
       setEditInitialStateLoaded(false);
+      setEditIsBusinessLicense(permit.is_business_license ?? false);
+      setEditBusinessLicenseNumber(permit.business_license_number || '');
     }
   }, [permit, isEditMode]);
 
@@ -403,6 +407,8 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         is_qp_signature_required: permit.is_qp_signature_required,
         is_approver_signature_required: permit.is_approver_signature_required,
         permit_validity: permit.permit_validity || '',
+        is_business_license: permit.is_business_license ?? false,
+        business_license_number: permit.business_license_number || '',
       };
 
       try {
@@ -493,6 +499,8 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         qp_email: permit.qp_email || '',
         qp_name: permit.qp_name || '',
         permit_validity: permit.permit_validity || '',
+        is_business_license: permit.is_business_license ?? false,
+        business_license_number: permit.business_license_number || '',
       };
 
       try {
@@ -640,6 +648,8 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         approver_name: permit.approver_name || '',
         approver_email: permit.approver_email || '',
         permit_validity: permit.permit_validity || '',
+        is_business_license: permit.is_business_license ?? false,
+        business_license_number: permit.business_license_number || '',
       };
 
       try {
@@ -792,6 +802,8 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         approver_email: permit.approver_email || '',
         approver_name: permit.approver_name || '',
         permit_validity: permit.permit_validity || '',
+        is_business_license: permit.is_business_license ?? false,
+        business_license_number: permit.business_license_number || '',
       };
 
       try {
@@ -936,6 +948,8 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         approved_at: new Date().toISOString(),
         pdf_url: pdfUrl || '',
         permit_validity: permit.permit_validity || '',
+        is_business_license: permit.is_business_license ?? false,
+        business_license_number: permit.business_license_number || '',
       };
 
       try {
@@ -1025,6 +1039,8 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         rejected_by: 'System Admin',
         rejected_at: new Date().toISOString(),
         permit_validity: permit.permit_validity || '',
+        is_business_license: permit.is_business_license ?? false,
+        business_license_number: permit.business_license_number || '',
       };
 
       try {
@@ -1174,6 +1190,13 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
       return;
     }
 
+    if (editIsBusinessLicense && (!editBusinessLicenseNumber || editBusinessLicenseNumber.trim() === '')) {
+      setEditValidationError('Business License Number is required when "Is this a Business License?" is checked.');
+      setShowResubmitConfirmModal(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
     if (!editFormData.detailed_sow || editFormData.detailed_sow.trim() === '') {
       setEditValidationError('Detailed Scope of Work is required.');
       setShowResubmitConfirmModal(false);
@@ -1256,6 +1279,8 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         is_approver_signature_required: editRequiresSignature && editSendToApproverForSignature,
         send_to_qp_for_signature: editRequiresSignature && editSendToQpForSignature,
         send_to_approver_for_signature: editRequiresSignature && editSendToApproverForSignature,
+        is_business_license: editIsBusinessLicense,
+        business_license_number: editIsBusinessLicense ? editBusinessLicenseNumber || null : null,
         rejection_notes: null,
         qp_approved_at: null,
         qp_approved_by: null,
@@ -1356,6 +1381,8 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         is_qp_signature_required: editRequiresSignature && editSendToQpForSignature,
         is_approver_signature_required: editRequiresSignature && editSendToApproverForSignature,
         permit_validity: editFormData.permit_validity || '',
+        is_business_license: editIsBusinessLicense,
+        business_license_number: editIsBusinessLicense ? editBusinessLicenseNumber || '' : '',
       };
 
       try {
@@ -1756,6 +1783,8 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         approver_name: permit.approver_name || '',
         approver_email: permit.approver_email || '',
         signed_pdf_url: permit.signed_pdf_url || '',
+        is_business_license: permit.is_business_license ?? false,
+        business_license_number: permit.business_license_number || '',
       };
 
       try {
@@ -1845,6 +1874,8 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         approver_name: permit.approver_name || '',
         approver_email: permit.approver_email || '',
         permit_validity: permit.permit_validity || '',
+        is_business_license: permit.is_business_license ?? false,
+        business_license_number: permit.business_license_number || '',
       };
 
       try {
@@ -2191,6 +2222,18 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                             <p className="text-gray-900 font-medium">{formatCurrency(permit.project_value)}</p>
                           </div>
                         </div>
+                        {permit.is_business_license && (
+                          <div className="grid grid-cols-4 gap-4">
+                            <div>
+                              <p className="text-sm text-gray-500">Business License</p>
+                              <p className="text-gray-900 font-medium">Yes</p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-gray-500">Business License #</p>
+                              <p className="text-gray-900 font-medium">{permit.business_license_number || 'N/A'}</p>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -2561,6 +2604,39 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                             </div>
                           </div>
                         </div>
+
+                        <div className="flex items-center gap-2 mt-1">
+                          <input
+                            type="checkbox"
+                            id="editIsBusinessLicense"
+                            checked={editIsBusinessLicense}
+                            onChange={(e) => {
+                              setEditIsBusinessLicense(e.target.checked);
+                              if (!e.target.checked) {
+                                setEditBusinessLicenseNumber('');
+                              }
+                            }}
+                            className="w-3.5 h-3.5 text-[#0072BC] border-gray-300 rounded focus:ring-[#0072BC]"
+                          />
+                          <label htmlFor="editIsBusinessLicense" className="text-xs font-medium text-gray-700 cursor-pointer">
+                            Is this a Business License?
+                          </label>
+                        </div>
+
+                        {editIsBusinessLicense && (
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
+                              Business License Number <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={editBusinessLicenseNumber}
+                              onChange={(e) => setEditBusinessLicenseNumber(e.target.value)}
+                              placeholder="Enter business license number..."
+                              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                            />
+                          </div>
+                        )}
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div>

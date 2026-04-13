@@ -73,6 +73,8 @@ export interface Permit {
   closed_at?: string;
   closed_by?: string;
   close_notes?: string;
+  is_business_license?: boolean;
+  business_license_number?: string;
 }
 
 export interface PermitDocument {

@@ -52,10 +52,12 @@ export default function PermitListView({ onNavigate, onSelectPermit }: PermitLis
     let filtered = [...permits];
 
     if (searchTerm) {
+      const term = searchTerm.toLowerCase();
       filtered = filtered.filter(
         (permit) =>
-          permit.ontivity_project_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          permit.requestor.toLowerCase().includes(searchTerm.toLowerCase())
+          permit.ontivity_project_number.toLowerCase().includes(term) ||
+          permit.requestor.toLowerCase().includes(term) ||
+          (permit.business_license_number && permit.business_license_number.toLowerCase().includes(term))
       );
     }
 
@@ -235,6 +237,7 @@ export default function PermitListView({ onNavigate, onSelectPermit }: PermitLis
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Type</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">State</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">City</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Business License #</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Date Requested</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Signed PDF</th>
@@ -244,7 +247,7 @@ export default function PermitListView({ onNavigate, onSelectPermit }: PermitLis
               <tbody className="divide-y divide-gray-200">
                 {filteredPermits.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="px-6 py-12 text-center text-gray-500">
+                    <td colSpan={12} className="px-6 py-12 text-center text-gray-500">
                       No permits found. Click "New Permit Request" to get started.
                     </td>
                   </tr>
@@ -261,6 +264,11 @@ export default function PermitListView({ onNavigate, onSelectPermit }: PermitLis
                       <td className="px-6 py-4 text-sm text-gray-700">{permit.type_of_permit}</td>
                       <td className="px-6 py-4 text-sm text-gray-700">{permit.state}</td>
                       <td className="px-6 py-4 text-sm text-gray-700">{permit.city}</td>
+                      <td className="px-6 py-4 text-sm text-gray-700">
+                        {permit.is_business_license && permit.business_license_number
+                          ? permit.business_license_number
+                          : <span className="text-gray-400">-</span>}
+                      </td>
                       <td className="px-6 py-4">
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(permit.current_stage)}`}>
                           {getStatusDisplay(permit)}

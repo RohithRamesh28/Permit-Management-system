@@ -314,6 +314,16 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
         return;
       }
 
+      if (isBusinessLicense) {
+        const licenseNum = isManualLicenseEntry ? manualLicenseNumber : selectedBusinessLicense;
+        if (!licenseNum || licenseNum.trim() === '') {
+          setValidationError('Business License Number is required when "Is this a Business License?" is checked.');
+          setSubmitting(false);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          return;
+        }
+      }
+
       if (!documentToSign) {
         setValidationError('Please upload a Permitting Application document to continue. This document is required for approval.');
         setShowDocumentError(true);
@@ -921,7 +931,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                 {isBusinessLicense && selectedState && (permitLevel === "State" || (permitLevel === "CountyCity" && selectedCountyCityTitle)) && (
                   <div className="w-full">
                     <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
-                      Business License Number
+                      Business License Number <span className="text-red-500">*</span>
                       {businessLicenseLoading && <Loader2 size={12} className="text-blue-500 animate-spin" />}
                     </label>
                     <div className="flex items-start gap-3">
