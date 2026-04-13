@@ -960,7 +960,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                             }}
                             className="inline-flex items-center px-2 py-0.5 text-[10px] font-medium text-white bg-[#0072BC] rounded hover:bg-[#005a94] transition-colors"
                           >
-                            Add Manually
+                            Add License Number
                           </button>
                         </span>
                       ) : (
