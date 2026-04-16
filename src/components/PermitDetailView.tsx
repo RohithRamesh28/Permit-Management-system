@@ -2230,15 +2230,17 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                             </div>
                           )}
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className={`grid ${permit.permit_jurisdiction_type === 'County/City' ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
                           <div>
                             <p className="text-sm text-gray-500">State</p>
                             <p className="text-gray-900 font-medium">{permit.state}</p>
                           </div>
-                          <div>
-                            <p className="text-sm text-gray-500">Jurisdiction</p>
-                            <p className="text-gray-900 font-medium">{permit.permit_jurisdiction || permit.state}</p>
-                          </div>
+                          {permit.permit_jurisdiction_type === 'County/City' && permit.permit_jurisdiction && permit.permit_jurisdiction !== permit.state && (
+                            <div>
+                              <p className="text-sm text-gray-500">Jurisdiction</p>
+                              <p className="text-gray-900 font-medium">{permit.permit_jurisdiction}</p>
+                            </div>
+                          )}
                         </div>
                         <div className="grid grid-cols-4 gap-4">
                           <div>
