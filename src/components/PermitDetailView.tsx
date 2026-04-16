@@ -12,6 +12,7 @@ import DateInput from './DateInput';
 import { useAuth } from '../contexts/AuthContext';
 import { getPermitPermissions, getCurrentReviewer } from '../utils/permitPermissions';
 import { getAvailableStates, getCountyCityOptions, getQPForSelection } from '../services/licensingService';
+import { getBusinessLicenses, BusinessLicense } from '../services/businessLicenseService';
 import { useApprovers, ApproverInfo } from '../hooks/useApprovers';
 import { restoreOriginalDocument, clearPermitSignatures, deleteOldOriginalAndUploadNew } from '../services/documentService';
 
@@ -89,6 +90,11 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
   const [showReplaceDocumentModal, setShowReplaceDocumentModal] = useState(false);
   const [editIsBusinessLicense, setEditIsBusinessLicense] = useState(false);
   const [editBusinessLicenseNumber, setEditBusinessLicenseNumber] = useState('');
+  const [editBusinessLicenses, setEditBusinessLicenses] = useState<BusinessLicense[]>([]);
+  const [editSelectedBusinessLicense, setEditSelectedBusinessLicense] = useState('');
+  const [editIsManualLicenseEntry, setEditIsManualLicenseEntry] = useState(false);
+  const [editManualLicenseNumber, setEditManualLicenseNumber] = useState('');
+  const [editBusinessLicenseLoading, setEditBusinessLicenseLoading] = useState(false);
   const [sharePointUploading, setSharePointUploading] = useState(false);
   const [sharePointUploadFailed, setSharePointUploadFailed] = useState(false);
   const [sharePointRetryCount, setSharePointRetryCount] = useState(0);
@@ -172,6 +178,11 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
       setEditInitialStateLoaded(false);
       setEditIsBusinessLicense(permit.is_business_license ?? false);
       setEditBusinessLicenseNumber(permit.business_license_number || '');
+      setEditSelectedBusinessLicense(permit.business_license_number || '');
+      setEditIsManualLicenseEntry(false);
+      setEditManualLicenseNumber('');
+      setEditBusinessLicenses([]);
+      setEditBusinessLicenseLoading(false);
     }
   }, [permit, isEditMode]);
 
@@ -1187,11 +1198,14 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
       return;
     }
 
-    if (editIsBusinessLicense && (!editBusinessLicenseNumber || editBusinessLicenseNumber.trim() === '')) {
-      setEditValidationError('Business License Number is required when "Is this a Business License?" is checked.');
-      setShowResubmitConfirmModal(false);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
+    if (editIsBusinessLicense) {
+      const licenseValue = editIsManualLicenseEntry ? editManualLicenseNumber : editSelectedBusinessLicense;
+      if (!licenseValue || licenseValue.trim() === '') {
+        setEditValidationError('Business License Number is required when "Is this a Business License?" is checked.');
+        setShowResubmitConfirmModal(false);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
     }
 
     if (!editFormData.detailed_sow || editFormData.detailed_sow.trim() === '') {
@@ -1277,7 +1291,9 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         send_to_qp_for_signature: editRequiresSignature && editSendToQpForSignature,
         send_to_approver_for_signature: editRequiresSignature && editSendToApproverForSignature,
         is_business_license: editIsBusinessLicense,
-        business_license_number: editIsBusinessLicense ? editBusinessLicenseNumber || null : null,
+        business_license_number: editIsBusinessLicense
+          ? (editIsManualLicenseEntry ? editManualLicenseNumber : editSelectedBusinessLicense) || null
+          : null,
         rejection_notes: null,
         qp_approved_at: null,
         qp_approved_by: null,
@@ -1379,7 +1395,9 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
         is_approver_signature_required: editRequiresSignature && editSendToApproverForSignature,
         permit_validity: editFormData.permit_validity || '',
         is_business_license: editIsBusinessLicense,
-        business_license_number: editIsBusinessLicense ? editBusinessLicenseNumber || '' : '',
+        business_license_number: editIsBusinessLicense
+          ? (editIsManualLicenseEntry ? editManualLicenseNumber : editSelectedBusinessLicense) || ''
+          : '',
       };
 
       try {
@@ -1514,6 +1532,27 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
       setEditLicenseListUsed(sourceList);
     }
   }, [editSelectedCountyCityTitle, editAvailableCountyCities]);
+
+  const editLoadBusinessLicenses = async () => {
+    if (!editFormData?.performing_entity || !editSelectedState) return;
+    setEditBusinessLicenseLoading(true);
+    const countyCityArg = editPermitLevel === 'CountyCity' ? editSelectedCountyCityTitle || undefined : undefined;
+    const licenses = await getBusinessLicenses(editFormData.performing_entity, editSelectedState, countyCityArg);
+    setEditBusinessLicenses(licenses);
+    setEditBusinessLicenseLoading(false);
+  };
+
+  useEffect(() => {
+    if (!isEditMode) return;
+    if (editIsBusinessLicense && editSelectedState && editFormData?.performing_entity) {
+      editLoadBusinessLicenses();
+    } else if (!editIsBusinessLicense) {
+      setEditBusinessLicenses([]);
+      setEditSelectedBusinessLicense('');
+      setEditIsManualLicenseEntry(false);
+      setEditManualLicenseNumber('');
+    }
+  }, [editIsBusinessLicense, editSelectedState, editSelectedCountyCityTitle, editFormData?.performing_entity]);
 
   const handleEditPermitLevelChange = (level: 'State' | 'CountyCity') => {
     setEditPermitLevel(level);
@@ -2497,6 +2536,98 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                         )}
 
                         {editSelectedState && (editPermitLevel === 'State' || (editPermitLevel === 'CountyCity' && editSelectedCountyCityTitle)) && (
+                          <div className="flex items-center gap-2 mt-1">
+                            <input
+                              type="checkbox"
+                              id="editIsBusinessLicense"
+                              checked={editIsBusinessLicense}
+                              onChange={(e) => {
+                                setEditIsBusinessLicense(e.target.checked);
+                                if (!e.target.checked) {
+                                  setEditBusinessLicenseNumber('');
+                                  setEditSelectedBusinessLicense('');
+                                  setEditIsManualLicenseEntry(false);
+                                  setEditManualLicenseNumber('');
+                                  setEditBusinessLicenses([]);
+                                }
+                              }}
+                              className="w-3.5 h-3.5 text-[#0072BC] border-gray-300 rounded focus:ring-[#0072BC]"
+                            />
+                            <label htmlFor="editIsBusinessLicense" className="text-xs font-medium text-gray-700 cursor-pointer">
+                              Is this a Business License?
+                            </label>
+                          </div>
+                        )}
+
+                        {editIsBusinessLicense && editSelectedState && (editPermitLevel === 'State' || (editPermitLevel === 'CountyCity' && editSelectedCountyCityTitle)) && (
+                          <div className="w-full">
+                            <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
+                              Business License Number <span className="text-red-500">*</span>
+                              {editBusinessLicenseLoading && <Loader2 size={12} className="text-blue-500 animate-spin" />}
+                            </label>
+                            <div className="flex items-start gap-3">
+                              <div className={`w-1/2 transition-all duration-300 ${editIsManualLicenseEntry ? 'opacity-40 blur-[1px] pointer-events-none select-none' : ''}`}>
+                                <SearchableDropdown
+                                  name="edit_business_license_number"
+                                  value={editSelectedBusinessLicense}
+                                  onChange={(value) => {
+                                    setEditSelectedBusinessLicense(value);
+                                    setEditBusinessLicenseNumber(value);
+                                  }}
+                                  options={editBusinessLicenses.map(l => l.licenseNumber)}
+                                  placeholder="Select license number..."
+                                  loading={editBusinessLicenseLoading}
+                                />
+                              </div>
+                              {editIsManualLicenseEntry && (
+                                <div className="w-1/2">
+                                  <input
+                                    type="text"
+                                    value={editManualLicenseNumber}
+                                    onChange={(e) => {
+                                      setEditManualLicenseNumber(e.target.value);
+                                      setEditBusinessLicenseNumber(e.target.value);
+                                    }}
+                                    placeholder="Enter license number..."
+                                    autoFocus
+                                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
+                                  />
+                                </div>
+                              )}
+                            </div>
+                            <div className="mt-1.5 flex items-center gap-2">
+                              {!editIsManualLicenseEntry ? (
+                                <span className="text-[10px] text-gray-500">
+                                  Did not find your license?{' '}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditIsManualLicenseEntry(true);
+                                      setEditSelectedBusinessLicense('');
+                                    }}
+                                    className="inline-flex items-center px-2 py-0.5 text-[10px] font-medium text-white bg-[#0072BC] rounded hover:bg-[#005a94] transition-colors"
+                                  >
+                                    Add License Number
+                                  </button>
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditIsManualLicenseEntry(false);
+                                    setEditManualLicenseNumber('');
+                                    setEditBusinessLicenseNumber(editSelectedBusinessLicense);
+                                  }}
+                                  className="inline-flex items-center px-2 py-0.5 text-[10px] font-medium text-[#0072BC] border border-[#0072BC] rounded hover:bg-[#0072BC] hover:text-white transition-colors"
+                                >
+                                  Back to dropdown
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {editSelectedState && (editPermitLevel === 'State' || (editPermitLevel === 'CountyCity' && editSelectedCountyCityTitle)) && (
                           <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div>
@@ -2602,38 +2733,6 @@ export default function PermitDetailView({ permitId, onNavigate, readOnlyMode = 
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2 mt-1">
-                          <input
-                            type="checkbox"
-                            id="editIsBusinessLicense"
-                            checked={editIsBusinessLicense}
-                            onChange={(e) => {
-                              setEditIsBusinessLicense(e.target.checked);
-                              if (!e.target.checked) {
-                                setEditBusinessLicenseNumber('');
-                              }
-                            }}
-                            className="w-3.5 h-3.5 text-[#0072BC] border-gray-300 rounded focus:ring-[#0072BC]"
-                          />
-                          <label htmlFor="editIsBusinessLicense" className="text-xs font-medium text-gray-700 cursor-pointer">
-                            Is this a Business License?
-                          </label>
-                        </div>
-
-                        {editIsBusinessLicense && (
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">
-                              Business License Number <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                              type="text"
-                              value={editBusinessLicenseNumber}
-                              onChange={(e) => setEditBusinessLicenseNumber(e.target.value)}
-                              placeholder="Enter business license number..."
-                              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#0072BC] focus:border-transparent"
-                            />
-                          </div>
-                        )}
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div>
