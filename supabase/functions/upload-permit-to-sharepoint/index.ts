@@ -236,7 +236,7 @@ Deno.serve(async (req: Request) => {
     const siteId = await getSiteId(accessToken, siteUrl);
     const driveId = await getDriveId(accessToken, siteId);
 
-    const targetFolder = "2. Working/Permits";
+    const targetFolder = "3. Shared";
     await ensureFolderExists(accessToken, driveId, targetFolder);
 
     const { data: documents, error: docsError } = await supabase
