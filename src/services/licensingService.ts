@@ -81,8 +81,6 @@ export async function getAvailableStates(
 ): Promise<string[]> {
   const sourceList = selectSourceList(permitLevel, permitType);
 
-  console.log('[getAvailableStates] Query params:', { permitLevel, permitType, subsidiary, sourceList });
-
   const { data, error } = await supabase
     .from("licensing_cache")
     .select("state, subsidiary, license_type")
@@ -94,32 +92,89 @@ export async function getAvailableStates(
     return [];
   }
 
-  console.log('[getAvailableStates] Raw data count:', data.length);
-  console.log('[getAvailableStates] Sample subsidiaries from DB:', [...new Set(data.map(r => r.subsidiary))].slice(0, 5));
-
   const filtered = data.filter(row => {
-    const subsidiarMatch = subsidiaryMatches(row.subsidiary, subsidiary);
-    const licenseTypeMatch = validateLicenseType(row.license_type, permitType);
-
-    if (subsidiarMatch && licenseTypeMatch) {
-      console.log('[getAvailableStates] Match found:', {
-        dbSubsidiary: row.subsidiary,
-        formSubsidiary: subsidiary,
-        licenseType: row.license_type,
-        permitType
-      });
-    }
-    return subsidiarMatch && licenseTypeMatch;
+    return subsidiaryMatches(row.subsidiary, subsidiary) && validateLicenseType(row.license_type, permitType);
   });
 
-  console.log('[getAvailableStates] Filtered count:', filtered.length);
-
-  const states = [...new Set(filtered.map(r => r.state?.trim()).filter(Boolean))].sort();
-  console.log('[getAvailableStates] Final states:', states);
-
-  return states;
+  return [...new Set(filtered.map(r => r.state?.trim()).filter(Boolean))].sort() as string[];
 }
 
+export interface QPOption {
+  qpName: string;
+  qpEmail: string | null;
+  spItemId: string | null;
+}
+
+// Returns all unique QPs for a given state + permit level + permit type.
+// Performing entity is NOT used as a filter here — the user picks the QP from the list.
+export async function getQPOptions(
+  permitLevel: "State" | "CountyCity",
+  permitType: "General" | "Electrical" | "Specialty",
+  state: string
+): Promise<QPOption[]> {
+  const sourceList = selectSourceList(permitLevel, permitType);
+
+  const { data, error } = await supabase
+    .from("licensing_cache")
+    .select("sp_item_id, qp_name, qp_email, license_type, state")
+    .eq("source_list", sourceList)
+    .in("status", ["Active", "Pending"]);
+
+  if (error || !data) {
+    console.error("Error fetching QP options:", error);
+    return [];
+  }
+
+  const stateFiltered = data.filter(row => row.state?.trim().toLowerCase() === state.trim().toLowerCase());
+  const typeFiltered = stateFiltered.filter(row => validateLicenseType(row.license_type, permitType));
+
+  // Deduplicate by qp_name — same person can appear on many rows
+  const seen = new Set<string>();
+  const result: QPOption[] = [];
+  for (const row of typeFiltered) {
+    if (!row.qp_name) continue;
+    if (seen.has(row.qp_name)) continue;
+    seen.add(row.qp_name);
+    result.push({
+      qpName: row.qp_name,
+      qpEmail: row.qp_email,
+      spItemId: row.sp_item_id,
+    });
+  }
+
+  return result.sort((a, b) => a.qpName.localeCompare(b.qpName));
+}
+
+// Returns county/city title options for a given state + permit type (no performing entity filter).
+export async function getCountyCityTitles(
+  state: string,
+  subsidiary: string,
+  permitType: "General" | "Electrical" | "Specialty"
+): Promise<string[]> {
+  const sourceList = selectSourceList("CountyCity", permitType);
+
+  const { data, error } = await supabase
+    .from("licensing_cache")
+    .select("county_city_title, subsidiary, license_type, state")
+    .eq("source_list", sourceList)
+    .in("status", ["Active", "Pending"]);
+
+  if (error || !data) {
+    console.error("Error fetching county/city titles:", error);
+    return [];
+  }
+
+  const filtered = data.filter(row =>
+    row.state?.trim().toLowerCase() === state.trim().toLowerCase() &&
+    subsidiaryMatches(row.subsidiary, subsidiary) &&
+    validateLicenseType(row.license_type, permitType)
+  );
+
+  const titles = [...new Set(filtered.map(r => r.county_city_title).filter(Boolean))] as string[];
+  return titles.sort((a, b) => a.localeCompare(b));
+}
+
+// Kept for backwards compatibility but no longer used in the main form flow.
 export async function getCountyCityOptions(
   permitType: "General" | "Electrical" | "Specialty",
   subsidiary: string,
@@ -127,30 +182,19 @@ export async function getCountyCityOptions(
 ): Promise<Array<{ title: string; qpName: string | null; qpEmail: string | null; spItemId: string | null }>> {
   const sourceList = selectSourceList("CountyCity", permitType);
 
-  console.log('[getCountyCityOptions] Query params:', { permitType, subsidiary, state, sourceList });
-
   const { data, error } = await supabase
     .from("licensing_cache")
     .select("county_city_title, subsidiary, qp_name, qp_email, sp_item_id, state, license_type")
     .eq("source_list", sourceList)
     .in("status", ["Active", "Pending"]);
 
-  if (error || !data) {
-    console.error("Error fetching county/city options:", error);
-    return [];
-  }
+  if (error || !data) return [];
 
-  console.log('[getCountyCityOptions] Raw data count:', data.length);
-
-  const stateMatches = data.filter(row => row.state?.trim().toLowerCase() === state.trim().toLowerCase());
-  console.log('[getCountyCityOptions] After state match:', stateMatches.length);
-
-  const filtered = stateMatches.filter(row => {
-    const subsidiarMatch = subsidiaryMatches(row.subsidiary, subsidiary);
-    const licenseTypeMatch = validateLicenseType(row.license_type, permitType);
-    return subsidiarMatch && licenseTypeMatch;
-  });
-  console.log('[getCountyCityOptions] After subsidiary and license type match:', filtered.length);
+  const filtered = data.filter(row =>
+    row.state?.trim().toLowerCase() === state.trim().toLowerCase() &&
+    subsidiaryMatches(row.subsidiary, subsidiary) &&
+    validateLicenseType(row.license_type, permitType)
+  );
 
   const uniqueMap = new Map<string, { title: string; qpName: string | null; qpEmail: string | null; spItemId: string | null }>();
   filtered.forEach(row => {
@@ -159,17 +203,15 @@ export async function getCountyCityOptions(
         title: row.county_city_title,
         qpName: row.qp_name,
         qpEmail: row.qp_email,
-        spItemId: row.sp_item_id
+        spItemId: row.sp_item_id,
       });
     }
   });
 
-  const result = Array.from(uniqueMap.values()).sort((a, b) => a.title.localeCompare(b.title));
-  console.log('[getCountyCityOptions] Final options:', result.length);
-
-  return result;
+  return Array.from(uniqueMap.values()).sort((a, b) => a.title.localeCompare(b.title));
 }
 
+// Kept for backwards compatibility.
 export async function getQPForSelection(
   permitLevel: "State" | "CountyCity",
   permitType: "General" | "Electrical" | "Specialty",
@@ -178,8 +220,6 @@ export async function getQPForSelection(
   countyCityTitle?: string
 ): Promise<{ qpName: string | null; qpEmail: string | null; matchedItemId: string | null; sourceList: string }> {
   const sourceList = selectSourceList(permitLevel, permitType);
-
-  console.log('[getQPForSelection] Query params:', { permitLevel, permitType, subsidiary, state, countyCityTitle, sourceList });
 
   let query = supabase
     .from("licensing_cache")
@@ -193,28 +233,17 @@ export async function getQPForSelection(
 
   const { data, error } = await query;
   if (error || !data) {
-    console.error("Error fetching QP:", error);
     return { qpName: null, qpEmail: null, matchedItemId: null, sourceList };
   }
 
-  console.log('[getQPForSelection] Raw data count:', data.length);
-
-  const stateMatches = data.filter(row => row.state?.trim().toLowerCase() === state.trim().toLowerCase());
-  console.log('[getQPForSelection] After state match:', stateMatches.length);
-
-  const filtered = stateMatches.filter(row => {
-    const subsidiarMatch = subsidiaryMatches(row.subsidiary, subsidiary);
-    const licenseTypeMatch = validateLicenseType(row.license_type, permitType);
-    return subsidiarMatch && licenseTypeMatch;
-  });
-  console.log('[getQPForSelection] After subsidiary and license type match:', filtered.length);
+  const filtered = data.filter(row =>
+    row.state?.trim().toLowerCase() === state.trim().toLowerCase() &&
+    subsidiaryMatches(row.subsidiary, subsidiary) &&
+    validateLicenseType(row.license_type, permitType)
+  );
 
   const match = filtered[0];
-  console.log('[getQPForSelection] Match found:', match ? 'yes' : 'no');
-
-  if (!match) {
-    return { qpName: null, qpEmail: null, matchedItemId: null, sourceList };
-  }
+  if (!match) return { qpName: null, qpEmail: null, matchedItemId: null, sourceList };
 
   return {
     qpName: match.qp_name,

@@ -8,7 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useQualifiedPerson } from '../hooks/useQualifiedPerson';
 import { getCurrentDateInMMDDYYYY } from '../utils/dateFormatters';
 import DateInput from './DateInput';
-import { getAvailableStates, getCountyCityOptions, getQPForSelection } from '../services/licensingService';
+import { getAvailableStates, getCountyCityTitles, getQPOptions, QPOption } from '../services/licensingService';
 import { getBusinessLicenses, BusinessLicense } from '../services/businessLicenseService';
 import { useApprovers, ApproverInfo } from '../hooks/useApprovers';
 
@@ -67,7 +67,9 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
   const [selectedState, setSelectedState] = useState<string | null>(null);
   const [selectedCountyCityTitle, setSelectedCountyCityTitle] = useState<string | null>(null);
   const [availableStates, setAvailableStates] = useState<string[]>([]);
-  const [availableCountyCities, setAvailableCountyCities] = useState<Array<{ title: string; qpName: string | null; qpEmail: string | null; spItemId: string | null }>>([]);
+  const [availableCountyCities, setAvailableCountyCities] = useState<string[]>([]);
+  const [availableQPs, setAvailableQPs] = useState<QPOption[]>([]);
+  const [selectedQpName, setSelectedQpName] = useState<string>('');
   const [qpName, setQpName] = useState<string | null>(null);
   const [qpEmail, setQpEmail] = useState<string | null>(null);
   const [matchedItemId, setMatchedItemId] = useState<string | null>(null);
@@ -124,6 +126,15 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const resetQpFields = () => {
+    setAvailableQPs([]);
+    setSelectedQpName('');
+    setQpName(null);
+    setQpEmail(null);
+    setMatchedItemId(null);
+    setLicenseListUsed(null);
+  };
+
   const loadStates = async () => {
     if (!permitType || !formData.performing_entity) return;
     setStatesLoading(true);
@@ -131,8 +142,8 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
     setAvailableStates([]);
     setSelectedState(null);
     setSelectedCountyCityTitle(null);
-    setQpName(null);
-    setQpEmail(null);
+    setAvailableCountyCities([]);
+    resetQpFields();
 
     const states = await getAvailableStates(permitLevel, permitType, formData.performing_entity);
     setAvailableStates(states);
@@ -142,46 +153,24 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
     setStatesLoading(false);
   };
 
-  const loadCountyCityOptions = async () => {
-    if (!selectedState || !permitType) return;
+  const loadCountyCityTitles = async () => {
+    if (!selectedState || !permitType || !formData.performing_entity) return;
     setCountiesLoading(true);
-    const options = await getCountyCityOptions(permitType, formData.performing_entity, selectedState);
-    setAvailableCountyCities(options);
-
-    if (options.length === 1) {
-      setSelectedCountyCityTitle(options[0].title);
-      setQpName(options[0].qpName);
-      setQpEmail(options[0].qpEmail);
-      setMatchedItemId(options[0].spItemId);
-      const sourceList = permitType === "Electrical" ? "county_electrical" : "county_contractor";
-      setLicenseListUsed(sourceList);
-    } else if (options.length > 1) {
-      setSelectedCountyCityTitle(null);
-      setQpName(null);
-      setQpEmail(null);
-      setMatchedItemId(null);
-      setLicenseListUsed(null);
-    }
-
+    const titles = await getCountyCityTitles(selectedState, formData.performing_entity, permitType);
+    setAvailableCountyCities(titles);
     setCountiesLoading(false);
   };
 
-  const loadQP = async () => {
-    if (!permitType || !formData.performing_entity || !selectedState) return;
-    if (permitLevel === "CountyCity" && !selectedCountyCityTitle) return;
-
+  const loadQPs = async (state: string) => {
+    if (!permitType) return;
     setQpLoading(true);
-    const result = await getQPForSelection(
-      permitLevel,
-      permitType,
-      formData.performing_entity,
-      selectedState,
-      permitLevel === "CountyCity" ? selectedCountyCityTitle! : undefined
-    );
-    setQpName(result.qpName);
-    setQpEmail(result.qpEmail);
-    setMatchedItemId(result.matchedItemId);
-    setLicenseListUsed(result.sourceList);
+    resetQpFields();
+    const options = await getQPOptions(permitLevel, permitType, state);
+    setAvailableQPs(options);
+    const sourceList = permitLevel === "State"
+      ? (permitType === "Electrical" ? "state_electrical" : "state_contractor")
+      : (permitType === "Electrical" ? "county_electrical" : "county_contractor");
+    setLicenseListUsed(sourceList);
     setQpLoading(false);
   };
 
@@ -192,25 +181,35 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
   }, [permitType, formData.performing_entity, permitLevel]);
 
   useEffect(() => {
-    if (selectedState && permitLevel === "CountyCity") {
-      loadCountyCityOptions();
-    } else if (selectedState && permitLevel === "State") {
-      loadQP();
+    if (!selectedState) return;
+    if (permitLevel === "CountyCity") {
+      loadCountyCityTitles();
     }
+    loadQPs(selectedState);
   }, [selectedState, permitLevel]);
 
+  // When county/city changes, reload QPs (still state-level filter, county is just for jurisdiction label)
   useEffect(() => {
-    if (selectedCountyCityTitle && permitLevel === "CountyCity") {
-      const selected = availableCountyCities.find(opt => opt.title === selectedCountyCityTitle);
-      if (selected) {
-        setQpName(selected.qpName);
-        setQpEmail(selected.qpEmail);
-        setMatchedItemId(selected.spItemId);
-        const sourceList = permitType === "Electrical" ? "county_electrical" : "county_contractor";
-        setLicenseListUsed(sourceList);
-      }
+    if (selectedState) {
+      loadQPs(selectedState);
     }
-  }, [selectedCountyCityTitle, availableCountyCities]);
+  }, [selectedCountyCityTitle]);
+
+  // When user picks a QP from the dropdown, populate email + matched id
+  useEffect(() => {
+    if (!selectedQpName) {
+      setQpName(null);
+      setQpEmail(null);
+      setMatchedItemId(null);
+      return;
+    }
+    const match = availableQPs.find(q => q.qpName === selectedQpName);
+    if (match) {
+      setQpName(match.qpName);
+      setQpEmail(match.qpEmail);
+      setMatchedItemId(match.spItemId);
+    }
+  }, [selectedQpName, availableQPs]);
 
   const loadBusinessLicenses = async () => {
     if (!formData.performing_entity || !selectedState) return;
@@ -240,8 +239,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
     setSelectedCountyCityTitle(null);
     setAvailableStates([]);
     setAvailableCountyCities([]);
-    setQpName(null);
-    setQpEmail(null);
+    resetQpFields();
     setStatesError(null);
     setIsBusinessLicense(false);
     setBusinessLicenses([]);
@@ -256,14 +254,8 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
     setSelectedCountyCityTitle(null);
     setAvailableStates([]);
     setAvailableCountyCities([]);
-    setQpName(null);
-    setQpEmail(null);
+    resetQpFields();
     setStatesError(null);
-    if (type === "Electrical") {
-      loadStates();
-    } else {
-      loadStates();
-    }
   };
 
   const handleDateChange = (name: string, value: string) => {
@@ -344,7 +336,9 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
 
       const permitJurisdiction = permitLevel === "State"
         ? selectedState
-        : `${selectedCountyCityTitle}, ${selectedState}`;
+        : selectedCountyCityTitle
+          ? `${selectedCountyCityTitle}, ${selectedState}`
+          : selectedState;
 
       const permitTypeDisplay = permitType === "General"
         ? "General Permit"
@@ -887,25 +881,24 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                 {permitLevel === 'CountyCity' && selectedState && (
                   <div className={`${countiesLoading ? 'opacity-50' : ''}`}>
                     <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
-                      County / City <span className="text-red-500">*</span>
+                      County / City
                       {countiesLoading && <Loader2 size={12} className="text-blue-500 animate-spin" />}
                     </label>
                     <p className="mb-2 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-                      If the county/city your looking for is not listed, then switch to Permit Level - <span className="font-bold">"State"</span>.
+                      If the county/city you're looking for is not listed, then switch to Permit Level - <span className="font-bold">"State"</span>.
                     </p>
                     <SearchableDropdown
                       name="county_city"
                       value={selectedCountyCityTitle || ""}
                       onChange={(value) => setSelectedCountyCityTitle(value)}
-                      options={availableCountyCities.map(opt => opt.title)}
-                      placeholder="Select county/city..."
-                      required
+                      options={availableCountyCities}
+                      placeholder="Select county/city (optional)..."
                       loading={countiesLoading}
                     />
                   </div>
                 )}
 
-                {selectedState && (permitLevel === "State" || (permitLevel === "CountyCity" && selectedCountyCityTitle)) && (
+                {selectedState && (
                   <div className="flex items-center gap-2 mt-1">
                     <input
                       type="checkbox"
@@ -928,7 +921,7 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                   </div>
                 )}
 
-                {isBusinessLicense && selectedState && (permitLevel === "State" || (permitLevel === "CountyCity" && selectedCountyCityTitle)) && (
+                {isBusinessLicense && selectedState && (
                   <div className="w-full">
                     <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
                       Business License Number <span className="text-red-500">*</span>
@@ -989,22 +982,25 @@ export default function NewPermitForm({ onNavigate }: NewPermitFormProps) {
                   </div>
                 )}
 
-                {selectedState && (permitLevel === "State" || (permitLevel === "CountyCity" && selectedCountyCityTitle)) && (
+                {selectedState && (
                   <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
-                          QP Name
+                          Qualified Person (QP) <span className="text-red-500">*</span>
                           {qpLoading && <Loader2 size={12} className="text-blue-500 animate-spin" />}
                         </label>
-                        <input
-                          type="text"
-                          value={qpName || 'Loading...'}
-                          readOnly
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white text-gray-600 cursor-not-allowed"
+                        <SearchableDropdown
+                          name="qpName"
+                          options={availableQPs.map(q => q.qpName)}
+                          value={selectedQpName}
+                          onChange={(val) => setSelectedQpName(val)}
+                          placeholder={qpLoading ? "Loading QPs..." : availableQPs.length === 0 ? "No QPs found" : "Select QP..."}
+                          required
+                          loading={qpLoading}
                         />
-                        {!qpName && !qpLoading && (
-                          <p className="text-[10px] text-amber-600 mt-1">QP unavailable — contact admin</p>
+                        {!qpLoading && availableQPs.length === 0 && selectedState && (
+                          <p className="text-[10px] text-amber-600 mt-1">No QPs available — contact admin</p>
                         )}
                       </div>
                       <div>
